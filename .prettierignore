@@ -1,0 +1,15 @@
+# Build output / deps
+node_modules
+.next/
+out/
+build/
+coverage/
+
+# Generated / lockfiles
+package-lock.json
+next-env.d.ts
+prisma/migrations/
+
+# Project planning docs (keep author formatting)
+CLAUDE.md
+PROJECT_PLAN.md
