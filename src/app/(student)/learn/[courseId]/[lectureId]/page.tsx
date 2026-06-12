@@ -1,0 +1,115 @@
+import { CourseStatus } from "@prisma/client";
+import type { Metadata } from "next";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
+
+import { LearnShell } from "@/components/features/video-player/learn-shell";
+import { LearnSidebar } from "@/components/features/video-player/learn-sidebar";
+import { LectureView } from "@/components/features/video-player/lecture-view";
+import { Button } from "@/components/ui/button";
+import { SIGN_IN_ROUTE } from "@/config/routes";
+import { getCurrentUser } from "@/lib/auth";
+import { getCourseForLearn } from "@/server/services/course";
+import { findEnrollment } from "@/server/services/enrollment";
+
+export const metadata: Metadata = {
+  title: "Learning",
+};
+
+type PageProps = { params: { courseId: string; lectureId: string } };
+
+export default async function LearnPage({ params }: PageProps) {
+  const { courseId, lectureId } = params;
+
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect(`${SIGN_IN_ROUTE}?callbackUrl=/learn/${courseId}/${lectureId}`);
+  }
+
+  const course = await getCourseForLearn(courseId);
+  if (!course || course.status !== CourseStatus.PUBLISHED) {
+    notFound();
+  }
+
+  // Access control: must be enrolled, otherwise back to the course detail page.
+  const enrollment = await findEnrollment(user.id, courseId);
+  if (!enrollment) {
+    redirect(`/courses/${course.slug}`);
+  }
+
+  const lectures = course.sections.flatMap((section) => section.lectures);
+  const index = lectures.findIndex((lecture) => lecture.id === lectureId);
+  if (index === -1) {
+    notFound();
+  }
+
+  const current = lectures[index];
+  const prev = lectures[index - 1] ?? null;
+  const next = lectures[index + 1] ?? null;
+
+  const sidebar = (
+    <LearnSidebar
+      courseId={course.id}
+      courseSlug={course.slug}
+      courseTitle={course.title}
+      currentLectureId={current.id}
+      sections={course.sections.map((section) => ({
+        id: section.id,
+        title: section.title,
+        lectures: section.lectures.map((lecture) => ({
+          id: lecture.id,
+          title: lecture.title,
+          type: lecture.type,
+        })),
+      }))}
+    />
+  );
+
+  return (
+    <LearnShell sidebar={sidebar}>
+      <div className="space-y-6">
+        <LectureView lecture={current} />
+
+        <nav
+          className="flex items-center justify-between border-t border-border pt-4"
+          data-testid="lecture-nav"
+        >
+          {prev ? (
+            <Button asChild variant="outline">
+              <Link
+                href={`/learn/${course.id}/${prev.id}`}
+                data-testid="prev-lecture"
+              >
+                <ChevronLeft className="mr-1 h-4 w-4" />
+                Previous
+              </Link>
+            </Button>
+          ) : (
+            <Button variant="outline" disabled data-testid="prev-lecture">
+              <ChevronLeft className="mr-1 h-4 w-4" />
+              Previous
+            </Button>
+          )}
+
+          {next ? (
+            <Button asChild>
+              <Link
+                href={`/learn/${course.id}/${next.id}`}
+                data-testid="next-lecture"
+              >
+                Next Lecture
+                <ChevronRight className="ml-1 h-4 w-4" />
+              </Link>
+            </Button>
+          ) : (
+            <Button disabled data-testid="next-lecture">
+              Next Lecture
+              <ChevronRight className="ml-1 h-4 w-4" />
+            </Button>
+          )}
+        </nav>
+      </div>
+    </LearnShell>
+  );
+}

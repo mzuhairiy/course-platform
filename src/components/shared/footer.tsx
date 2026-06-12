@@ -1,0 +1,82 @@
+import Link from "next/link";
+
+import { Container } from "@/components/shared/container";
+import { footerNav } from "@/config/nav";
+import { siteConfig } from "@/config/site";
+
+function slug(value: string) {
+  return value.toLowerCase().replace(/\s+/g, "-");
+}
+
+export function Footer() {
+  const year = new Date().getFullYear();
+
+  return (
+    <footer
+      className="border-t border-border bg-background"
+      data-testid="footer"
+    >
+      <Container className="py-12">
+        <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
+          <div className="col-span-2 space-y-3 md:col-span-1">
+            <Link
+              href="/"
+              className="text-base font-semibold"
+              data-testid="footer-logo"
+            >
+              {siteConfig.name}
+            </Link>
+            <p className="max-w-xs text-sm text-muted-foreground">
+              {siteConfig.description}
+            </p>
+          </div>
+
+          {footerNav.map((column) => (
+            <div key={column.title} className="space-y-3">
+              <h3 className="text-sm font-semibold">{column.title}</h3>
+              <ul className="space-y-2">
+                {column.items.map((item) => (
+                  <li key={`${column.title}-${item.href}`}>
+                    <Link
+                      href={item.href}
+                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                      data-testid={`footer-link-${slug(column.title)}-${slug(item.title)}`}
+                    >
+                      {item.title}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-border pt-6 sm:flex-row">
+          <p className="text-sm text-muted-foreground">
+            © {year} {siteConfig.name}. All rights reserved.
+          </p>
+          <div className="flex gap-4 text-sm text-muted-foreground">
+            <a
+              href={siteConfig.links.twitter}
+              className="transition-colors hover:text-foreground"
+              target="_blank"
+              rel="noreferrer"
+              data-testid="footer-social-twitter"
+            >
+              Twitter
+            </a>
+            <a
+              href={siteConfig.links.github}
+              className="transition-colors hover:text-foreground"
+              target="_blank"
+              rel="noreferrer"
+              data-testid="footer-social-github"
+            >
+              GitHub
+            </a>
+          </div>
+        </div>
+      </Container>
+    </footer>
+  );
+}

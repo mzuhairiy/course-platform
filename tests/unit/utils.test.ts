@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { cn } from "@/lib/utils";
+import { cn, getInitials } from "@/lib/utils";
 
 // Trivial test to verify the Vitest setup runs and the `@/` alias resolves.
 describe("cn (class name merge util)", () => {
@@ -14,5 +14,25 @@ describe("cn (class name merge util)", () => {
 
   it("ignores falsy values", () => {
     expect(cn("a", false, null, undefined, "", "b")).toBe("a b");
+  });
+});
+
+describe("getInitials", () => {
+  it("takes the first two word initials", () => {
+    expect(getInitials("Jane Doe")).toBe("JD");
+  });
+
+  it("handles a single word", () => {
+    expect(getInitials("madonna")).toBe("M");
+  });
+
+  it("caps at two initials", () => {
+    expect(getInitials("a b c")).toBe("AB");
+  });
+
+  it("returns the fallback for empty / null", () => {
+    expect(getInitials(null)).toBe("U");
+    expect(getInitials("")).toBe("U");
+    expect(getInitials(undefined, "X")).toBe("X");
   });
 });
