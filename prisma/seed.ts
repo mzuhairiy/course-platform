@@ -124,6 +124,28 @@ async function main() {
                     durationSeconds: lecture.durationSeconds,
                     contentMd: lecture.contentMd,
                     videoUrl: lecture.videoUrl,
+                    quiz: lecture.quiz
+                      ? {
+                          create: {
+                            id: lecture.quiz.id,
+                            title: lecture.quiz.title,
+                            description: lecture.quiz.description,
+                            passingScore: lecture.quiz.passingScore,
+                            timeLimit: lecture.quiz.timeLimit,
+                            questions: {
+                              create: lecture.quiz.questions.map((q) => ({
+                                id: q.id,
+                                type: q.type,
+                                question: q.question,
+                                options: q.options,
+                                correctAnswerIds: q.correctAnswerIds,
+                                explanation: q.explanation,
+                                order: q.order,
+                              })),
+                            },
+                          },
+                        }
+                      : undefined,
                   })),
                 },
               })),
@@ -151,6 +173,8 @@ async function main() {
     sections,
     lectures,
     enrollments,
+    quizzes,
+    quizQuestions,
   ] = await Promise.all([
     db.user.count(),
     db.category.count(),
@@ -159,6 +183,8 @@ async function main() {
     db.section.count(),
     db.lecture.count(),
     db.enrollment.count(),
+    db.quiz.count(),
+    db.quizQuestion.count(),
   ]);
 
   console.log("Seed complete:", {
@@ -169,6 +195,8 @@ async function main() {
     sections,
     lectures,
     enrollments,
+    quizzes,
+    quizQuestions,
   });
 }
 

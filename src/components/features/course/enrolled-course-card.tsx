@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { DownloadCertificateButton } from "@/components/features/certificate/download-certificate-button";
 import { CourseCover } from "@/components/features/course/course-cover";
 import { CourseProgressBar } from "@/components/features/course/course-progress-bar";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ export function EnrolledCourseCard({
   const continueHref = firstLectureId
     ? `/learn/${course.id}/${firstLectureId}`
     : `/courses/${course.slug}`;
+  const isCompleted = progress.total > 0 && progress.percentage === 100;
 
   return (
     <Card
@@ -62,10 +64,24 @@ export function EnrolledCourseCard({
           percentage={progress.percentage}
         />
       </CardContent>
-      <CardFooter>
-        <Button asChild className="w-full" data-testid="continue-learning">
-          <Link href={continueHref}>Continue Learning</Link>
+      <CardFooter className="flex-col gap-2">
+        <Button
+          asChild
+          variant={isCompleted ? "outline" : "default"}
+          className="w-full"
+          data-testid="continue-learning"
+        >
+          <Link href={continueHref}>
+            {isCompleted ? "Review Course" : "Continue Learning"}
+          </Link>
         </Button>
+        {isCompleted ? (
+          <DownloadCertificateButton
+            courseId={course.id}
+            courseSlug={course.slug}
+            className="w-full"
+          />
+        ) : null}
       </CardFooter>
     </Card>
   );

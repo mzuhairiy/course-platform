@@ -4,6 +4,7 @@ import type { LectureType } from "@prisma/client";
 import { CheckCircle2, FileText, HelpCircle, PlayCircle } from "lucide-react";
 import Link from "next/link";
 
+import { CertificateSection } from "@/components/features/certificate/certificate-section";
 import { CourseProgressBar } from "@/components/features/course/course-progress-bar";
 import {
   Accordion,
@@ -125,6 +126,12 @@ export function LearnSidebar({
           </AccordionItem>
         ))}
       </Accordion>
+
+      <CertificateSection
+        courseId={courseId}
+        courseSlug={courseSlug}
+        completed={progress.total > 0 && progress.percentage === 100}
+      />
     </div>
   );
 }

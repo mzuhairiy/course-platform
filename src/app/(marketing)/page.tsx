@@ -80,24 +80,6 @@ export default async function HomePage() {
         </Container>
       </Section>
 
-      <Section data-testid="categories-section" spacing="compact">
-        <Container className="space-y-6">
-          <Heading as="h2" level="h2">
-            Browse by category
-          </Heading>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            {categories.map((category) => (
-              <CategoryCard
-                key={category.id}
-                name={category.name}
-                slug={category.slug}
-                courseCount={category._count.courses}
-              />
-            ))}
-          </div>
-        </Container>
-      </Section>
-
       <Section data-testid="featured-courses-section" spacing="compact">
         <Container className="space-y-6">
           <Heading as="h2" level="h2">
@@ -114,6 +96,24 @@ export default async function HomePage() {
               Belum ada course yang dipublikasikan.
             </Text>
           )}
+        </Container>
+      </Section>
+
+      <Section data-testid="categories-section" spacing="compact">
+        <Container className="space-y-6">
+          <Heading as="h2" level="h2">
+            Browse by category
+          </Heading>
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            {categories.map((category) => (
+              <CategoryCard
+                key={category.id}
+                name={category.name}
+                slug={category.slug}
+                courseCount={category._count.courses}
+              />
+            ))}
+          </div>
         </Container>
       </Section>
 

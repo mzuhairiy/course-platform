@@ -6,12 +6,14 @@ const {
   progressFindUnique,
   progressFindMany,
   progressUpsert,
+  enrollmentUpdateMany,
 } = vi.hoisted(() => ({
   lectureFindUnique: vi.fn(),
   lectureFindMany: vi.fn(),
   progressFindUnique: vi.fn(),
   progressFindMany: vi.fn(),
   progressUpsert: vi.fn(),
+  enrollmentUpdateMany: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -22,6 +24,7 @@ vi.mock("@/lib/db", () => ({
       findMany: progressFindMany,
       upsert: progressUpsert,
     },
+    enrollment: { updateMany: enrollmentUpdateMany },
   },
 }));
 
@@ -33,8 +36,16 @@ import {
 beforeEach(() => {
   vi.clearAllMocks();
   // Every lecture in these tests is 10s long; 90% threshold = 9s.
-  lectureFindUnique.mockResolvedValue({ durationSeconds: 10 });
+  lectureFindUnique.mockResolvedValue({
+    durationSeconds: 10,
+    section: { courseId: "course_1" },
+  });
   progressUpsert.mockImplementation(({ update }) => Promise.resolve(update));
+  // Defaults so the post-completion course-completion sync doesn't crash:
+  // a single-lecture course that isn't fully done yet.
+  lectureFindMany.mockResolvedValue([{ id: "lec_1" }, { id: "lec_2" }]);
+  progressFindMany.mockResolvedValue([]);
+  enrollmentUpdateMany.mockResolvedValue({ count: 0 });
 });
 
 describe("updateLectureProgress", () => {
@@ -57,6 +68,39 @@ describe("updateLectureProgress", () => {
     const args = progressUpsert.mock.calls[0][0];
     expect(args.update.isCompleted).toBe(true);
     expect(args.update.completedAt).toBeInstanceOf(Date);
+  });
+
+  it("stamps Enrollment.completedAt when the final lecture completes the course", async () => {
+    progressFindUnique.mockResolvedValue(null);
+    // After this upsert the course has exactly one lecture, now completed → 100%.
+    lectureFindMany.mockResolvedValue([{ id: "lec_1" }]);
+    progressFindMany.mockResolvedValue([
+      { lectureId: "lec_1", isCompleted: true, watchedSeconds: 10 },
+    ]);
+
+    await updateLectureProgress("user_1", "lec_1", 10);
+
+    expect(enrollmentUpdateMany).toHaveBeenCalledTimes(1);
+    const args = enrollmentUpdateMany.mock.calls[0][0];
+    expect(args.where).toMatchObject({
+      userId: "user_1",
+      courseId: "course_1",
+      completedAt: null,
+    });
+    expect(args.data.completedAt).toBeInstanceOf(Date);
+  });
+
+  it("does not touch enrollment while the course is below 100%", async () => {
+    progressFindUnique.mockResolvedValue(null);
+    // Two lectures, only the one just completed → still 50%.
+    lectureFindMany.mockResolvedValue([{ id: "lec_1" }, { id: "lec_2" }]);
+    progressFindMany.mockResolvedValue([
+      { lectureId: "lec_1", isCompleted: true, watchedSeconds: 10 },
+    ]);
+
+    await updateLectureProgress("user_1", "lec_1", 10);
+
+    expect(enrollmentUpdateMany).not.toHaveBeenCalled();
   });
 
   it("is idempotent once completed (keeps state + original completedAt)", async () => {

@@ -1,5 +1,9 @@
 import ReactMarkdown from "react-markdown";
 
+import {
+  QuizLecture,
+  type QuizLectureProps,
+} from "@/components/features/quiz/quiz-lecture";
 import { MarkCompleteButton } from "@/components/features/video-player/mark-complete-button";
 import { VideoLecture } from "@/components/features/video-player/video-lecture";
 import { Heading, Text } from "@/components/ui/typography";
@@ -13,9 +17,11 @@ const SAMPLE_VIDEO_URL = "/sample-lecture.mp4";
 export function LectureView({
   lecture,
   progress,
+  quiz,
 }: {
   lecture: LearnLecture;
   progress: PerLectureProgress;
+  quiz?: QuizLectureProps | null;
 }) {
   return (
     <div className="space-y-4" data-testid="lecture-view">
@@ -49,20 +55,18 @@ export function LectureView({
       ) : null}
 
       {lecture.type === "QUIZ" ? (
-        <div className="space-y-6">
+        quiz ? (
+          // QUIZ lectures are completed by PASSING the quiz (handled server-side
+          // in submitQuizAttempt → markLectureComplete), not a manual button.
+          <QuizLecture {...quiz} />
+        ) : (
           <div
             className="rounded-lg border border-dashed border-border p-12 text-center"
             data-testid="quiz-placeholder"
           >
-            <Text variant="muted">Quiz akan tersedia di Fase 3.</Text>
+            <Text variant="muted">Quiz belum tersedia untuk lecture ini.</Text>
           </div>
-          {/* No quiz engine yet: QUIZ placeholders are completed manually and
-              still count toward course progress (see getCourseProgress). */}
-          <MarkCompleteButton
-            lectureId={lecture.id}
-            initialCompleted={progress.completed}
-          />
-        </div>
+        )
       ) : null}
     </div>
   );

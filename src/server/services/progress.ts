@@ -27,6 +27,21 @@ export async function getLectureCourseId(
 }
 
 /**
+ * Stamp Enrollment.completedAt the first time a learner reaches 100% of a
+ * course. Idempotent: only updates when completedAt is still null, so the
+ * original completion timestamp (and any issued certificate) never changes.
+ */
+async function syncCourseCompletion(userId: string, courseId: string) {
+  const { percentage, total } = await getCourseProgress(userId, courseId);
+  if (total === 0 || percentage < 100) return;
+
+  await db.enrollment.updateMany({
+    where: { userId, courseId, completedAt: null },
+    data: { completedAt: new Date() },
+  });
+}
+
+/**
  * Upsert video progress for a lecture. Completion is sticky and idempotent:
  * once completed it never flips back, and completedAt is set exactly once.
  */
@@ -37,7 +52,7 @@ export async function updateLectureProgress(
 ) {
   const lecture = await db.lecture.findUnique({
     where: { id: lectureId },
-    select: { durationSeconds: true },
+    select: { durationSeconds: true, section: { select: { courseId: true } } },
   });
   if (!lecture) return null;
 
@@ -53,11 +68,18 @@ export async function updateLectureProgress(
   const completedAt =
     existing?.completedAt ?? (isCompleted ? new Date() : null);
 
-  return db.lectureProgress.upsert({
+  const result = await db.lectureProgress.upsert({
     where: { userId_lectureId: { userId, lectureId } },
     create: { userId, lectureId, watchedSeconds, isCompleted, completedAt },
     update: { watchedSeconds, isCompleted, completedAt },
   });
+
+  // When this completes the final remaining lecture, mark the whole course done.
+  if (isCompleted) {
+    await syncCourseCompletion(userId, lecture.section.courseId);
+  }
+
+  return result;
 }
 
 /**
@@ -68,26 +90,36 @@ export async function markLectureComplete(userId: string, lectureId: string) {
   const existing = await db.lectureProgress.findUnique({
     where: { userId_lectureId: { userId, lectureId } },
   });
-  if (existing?.isCompleted) return existing;
 
-  const completedAt = existing?.completedAt ?? new Date();
-  return db.lectureProgress.upsert({
-    where: { userId_lectureId: { userId, lectureId } },
-    create: {
-      userId,
-      lectureId,
-      watchedSeconds: existing?.watchedSeconds ?? 0,
-      isCompleted: true,
-      completedAt,
-    },
-    update: { isCompleted: true, completedAt },
-  });
+  let record = existing;
+  if (!existing?.isCompleted) {
+    const completedAt = existing?.completedAt ?? new Date();
+    record = await db.lectureProgress.upsert({
+      where: { userId_lectureId: { userId, lectureId } },
+      create: {
+        userId,
+        lectureId,
+        watchedSeconds: existing?.watchedSeconds ?? 0,
+        isCompleted: true,
+        completedAt,
+      },
+      update: { isCompleted: true, completedAt },
+    });
+  }
+
+  // Marking this lecture done may complete the course (last reading/quiz).
+  const courseId = await getLectureCourseId(lectureId);
+  if (courseId) {
+    await syncCourseCompletion(userId, courseId);
+  }
+
+  return record;
 }
 
 /**
- * Course progress for a learner. Every lecture type (VIDEO/READING/QUIZ) counts
- * toward the total — QUIZ placeholders are completed via the manual button —
- * so 100% means every item in the curriculum is done.
+ * Course progress for a learner. Every lecture type counts toward the total:
+ * VIDEO completes at ≥90% watched, READING via "Tandai Selesai", and QUIZ by
+ * passing the quiz — so 100% means every item in the curriculum is done.
  */
 export async function getCourseProgress(
   userId: string,

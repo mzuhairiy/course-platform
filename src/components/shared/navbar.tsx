@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, Menu, X } from "lucide-react";
+import { ChevronDown, LogOut, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -67,6 +67,11 @@ function UserMenu({ user }: { user: NonNullable<NavUser> }) {
           >
             {user.name ?? "Account"}
           </span>
+          <ChevronDown
+            className="h-4 w-4 shrink-0 opacity-70 transition-transform"
+            aria-hidden="true"
+            data-testid="user-menu-chevron"
+          />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56" data-testid="user-menu">

@@ -174,6 +174,18 @@ export function searchPublishedCourses(query: string, limit: number) {
   });
 }
 
+/** Course title/slug + instructor name for certificate rendering. */
+export function getCourseCertificateMeta(courseId: string) {
+  return db.course.findUnique({
+    where: { id: courseId },
+    select: {
+      title: true,
+      slug: true,
+      instructor: { select: { name: true } },
+    },
+  });
+}
+
 /** Minimal course data needed by the free-enrollment action. */
 export function getCourseEnrollmentTarget(courseId: string) {
   return db.course.findUnique({

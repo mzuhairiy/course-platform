@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import { CourseCompletedBanner } from "@/components/features/certificate/course-completed-banner";
 import { LearnShell } from "@/components/features/video-player/learn-shell";
 import { LearnSidebar } from "@/components/features/video-player/learn-sidebar";
 import { LectureView } from "@/components/features/video-player/lecture-view";
@@ -13,6 +14,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getCourseForLearn } from "@/server/services/course";
 import { findEnrollment } from "@/server/services/enrollment";
 import { getCourseProgress } from "@/server/services/progress";
+import { getQuizBundle } from "@/server/services/quiz";
 
 export const metadata: Metadata = {
   title: "Learning",
@@ -58,6 +60,24 @@ export default async function LearnPage({ params }: PageProps) {
     watchedSeconds: 0,
   };
 
+  // For a QUIZ lecture, load the quiz (client-safe questions + attempt history).
+  const nextHref = next ? `/learn/${course.id}/${next.id}` : null;
+  const quizBundle =
+    current.type === "QUIZ" ? await getQuizBundle(user.id, current.id) : null;
+  const quizProps = quizBundle
+    ? {
+        quizId: quizBundle.quizId,
+        title: quizBundle.title,
+        description: quizBundle.description,
+        passingScore: quizBundle.passingScore,
+        timeLimit: quizBundle.timeLimit,
+        questionCount: quizBundle.questionCount,
+        questions: quizBundle.questions,
+        attempts: quizBundle.attempts,
+        nextHref,
+      }
+    : null;
+
   const sidebar = (
     <LearnSidebar
       courseId={course.id}
@@ -85,7 +105,18 @@ export default async function LearnPage({ params }: PageProps) {
   return (
     <LearnShell sidebar={sidebar}>
       <div className="space-y-6">
-        <LectureView lecture={current} progress={currentProgress} />
+        {progress.total > 0 && progress.percentage === 100 ? (
+          <CourseCompletedBanner
+            courseId={course.id}
+            courseSlug={course.slug}
+          />
+        ) : null}
+
+        <LectureView
+          lecture={current}
+          progress={currentProgress}
+          quiz={quizProps}
+        />
 
         <nav
           className="flex items-center justify-between border-t border-border pt-4"

@@ -3,6 +3,8 @@ import { Check } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { CertificateSection } from "@/components/features/certificate/certificate-section";
+import { CourseCompletedBanner } from "@/components/features/certificate/course-completed-banner";
 import { CourseCurriculum } from "@/components/features/course/course-curriculum";
 import { CourseProgressBar } from "@/components/features/course/course-progress-bar";
 import { EnrollCard } from "@/components/features/course/enroll-card";
@@ -104,12 +106,28 @@ export default async function CourseDetailPage({ params }: PageProps) {
             </Text>
           </div>
           {courseProgress ? (
-            <div className="max-w-md pt-2" data-testid="course-header-progress">
+            <div
+              className="max-w-md space-y-4 pt-2"
+              data-testid="course-header-progress"
+            >
               <CourseProgressBar
                 completed={courseProgress.completed}
                 total={courseProgress.total}
                 percentage={courseProgress.percentage}
               />
+              {courseProgress.total > 0 &&
+              courseProgress.percentage === 100 ? (
+                <CourseCompletedBanner
+                  courseId={course.id}
+                  courseSlug={course.slug}
+                />
+              ) : (
+                <CertificateSection
+                  courseId={course.id}
+                  courseSlug={course.slug}
+                  completed={false}
+                />
+              )}
             </div>
           ) : null}
         </Container>
