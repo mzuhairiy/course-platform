@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 
 import { CourseStatus, PrismaClient, UserRole } from "@prisma/client";
 
-import { CATEGORIES, COURSES, INSTRUCTORS } from "./seed-data";
+import { CATEGORIES, COURSES, COVER_LABELS, INSTRUCTORS } from "./seed-data";
 import { generateCurriculum } from "./seed-curriculum";
 
 const db = new PrismaClient();
@@ -11,8 +11,10 @@ const db = new PrismaClient();
 const SEED_PASSWORD = "Password123!";
 
 const avatar = (email: string) => `https://i.pravatar.cc/150?u=${email}`;
-const thumbnail = (slug: string) =>
-  `https://picsum.photos/seed/${slug}/800/450`;
+// Instructors use deterministic 3D-style illustrated avatars (DiceBear), never
+// real human photos. Seeded by stable id so re-seeding produces the same image.
+const instructorAvatar = (seed: string) =>
+  `https://api.dicebear.com/9.x/adventurer/png?seed=${encodeURIComponent(seed)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
 
 const STUDENTS = [
   { id: "user_student", email: "student@example.com", name: "John Student" },
@@ -39,13 +41,21 @@ async function main() {
     await db.category.create({ data: category });
   }
 
+  const categoryIdBySlug = new Map(CATEGORIES.map((c) => [c.slug, c.id]));
+
   for (const instructor of INSTRUCTORS) {
+    const expertiseId = categoryIdBySlug.get(instructor.expertiseSlug);
+    if (!expertiseId) {
+      throw new Error(`Unknown expertise slug: ${instructor.expertiseSlug}`);
+    }
     const data = {
       name: instructor.name,
       email: instructor.email,
       role: UserRole.INSTRUCTOR,
       bio: instructor.bio,
-      image: avatar(instructor.email),
+      headline: instructor.headline,
+      expertiseId,
+      image: instructorAvatar(instructor.id),
       password: passwordHash,
     };
     await db.user.upsert({
@@ -69,8 +79,6 @@ async function main() {
       create: { id: student.id, ...data },
     });
   }
-
-  const categoryIdBySlug = new Map(CATEGORIES.map((c) => [c.slug, c.id]));
 
   for (let index = 0; index < COURSES.length; index += 1) {
     const course = COURSES[index];
@@ -96,7 +104,9 @@ async function main() {
         price: course.price,
         status: course.status,
         publishedAt: course.publishedAt,
-        thumbnailUrl: thumbnail(course.slug),
+        // No real image: courses render a generated 3D CourseCover instead.
+        thumbnailUrl: null,
+        coverLabel: COVER_LABELS[course.id] ?? course.title,
         categoryId,
         instructorId: course.instructorId,
         sections: sections.length

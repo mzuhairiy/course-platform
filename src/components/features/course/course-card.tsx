@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { CourseCover } from "@/components/features/course/course-cover";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -20,8 +21,8 @@ export function CourseCard({ course }: { course: CourseCardData }) {
       className="group block h-full"
     >
       <Card className="flex h-full flex-col overflow-hidden transition-colors hover:border-border-strong">
-        <div className="relative aspect-video w-full bg-surface-muted">
-          {course.thumbnailUrl ? (
+        {course.thumbnailUrl ? (
+          <div className="relative aspect-video w-full bg-surface-muted">
             <Image
               src={course.thumbnailUrl}
               alt={course.title}
@@ -29,8 +30,13 @@ export function CourseCard({ course }: { course: CourseCardData }) {
               sizes="(max-width: 768px) 100vw, 33vw"
               className="object-cover"
             />
-          ) : null}
-        </div>
+          </div>
+        ) : (
+          <CourseCover
+            label={course.coverLabel ?? course.title}
+            seed={course.slug}
+          />
+        )}
         <CardHeader className="gap-2">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary">{course.level}</Badge>

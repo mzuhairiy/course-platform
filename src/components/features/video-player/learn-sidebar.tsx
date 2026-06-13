@@ -1,9 +1,10 @@
 "use client";
 
 import type { LectureType } from "@prisma/client";
-import { FileText, HelpCircle, PlayCircle } from "lucide-react";
+import { CheckCircle2, FileText, HelpCircle, PlayCircle } from "lucide-react";
 import Link from "next/link";
 
+import { CourseProgressBar } from "@/components/features/course/course-progress-bar";
 import {
   Accordion,
   AccordionContent,
@@ -14,6 +15,8 @@ import { cn } from "@/lib/utils";
 
 type Lecture = { id: string; title: string; type: LectureType };
 type Section = { id: string; title: string; lectures: Lecture[] };
+
+type Progress = { completed: number; total: number; percentage: number };
 
 const LECTURE_ICON: Record<LectureType, typeof PlayCircle> = {
   VIDEO: PlayCircle,
@@ -27,13 +30,18 @@ export function LearnSidebar({
   courseTitle,
   sections,
   currentLectureId,
+  completedLectureIds,
+  progress,
 }: {
   courseId: string;
   courseSlug: string;
   courseTitle: string;
   sections: Section[];
   currentLectureId: string;
+  completedLectureIds: string[];
+  progress: Progress;
 }) {
+  const completed = new Set(completedLectureIds);
   const activeSection = sections.find((section) =>
     section.lectures.some((lecture) => lecture.id === currentLectureId),
   );
@@ -52,6 +60,12 @@ export function LearnSidebar({
           {courseTitle}
         </Link>
       </div>
+
+      <CourseProgressBar
+        completed={progress.completed}
+        total={progress.total}
+        percentage={progress.percentage}
+      />
 
       <Accordion
         type="multiple"
@@ -74,8 +88,9 @@ export function LearnSidebar({
             <AccordionContent>
               <ul className="space-y-1">
                 {section.lectures.map((lecture) => {
-                  const Icon = LECTURE_ICON[lecture.type];
                   const active = lecture.id === currentLectureId;
+                  const isDone = completed.has(lecture.id);
+                  const Icon = LECTURE_ICON[lecture.type];
                   return (
                     <li key={lecture.id}>
                       <Link
@@ -83,6 +98,7 @@ export function LearnSidebar({
                         aria-current={active ? "page" : undefined}
                         data-testid="sidebar-lecture"
                         data-active={active}
+                        data-completed={isDone}
                         className={cn(
                           "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
                           active
@@ -90,7 +106,15 @@ export function LearnSidebar({
                             : "text-muted-foreground hover:bg-accent hover:text-foreground",
                         )}
                       >
-                        <Icon className="h-4 w-4 shrink-0" />
+                        {isDone ? (
+                          <CheckCircle2
+                            className="h-4 w-4 shrink-0 text-green-600"
+                            data-testid="lecture-complete-check"
+                            aria-label="Selesai"
+                          />
+                        ) : (
+                          <Icon className="h-4 w-4 shrink-0" />
+                        )}
                         <span className="flex-1">{lecture.title}</span>
                       </Link>
                     </li>

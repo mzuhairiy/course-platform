@@ -26,6 +26,7 @@ const enrolledCourseInclude = {
       slug: true,
       title: true,
       thumbnailUrl: true,
+      coverLabel: true,
       instructor: { select: { name: true } },
       sections: {
         orderBy: { order: "asc" },

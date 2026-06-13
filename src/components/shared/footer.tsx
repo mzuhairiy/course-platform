@@ -12,10 +12,7 @@ export function Footer() {
   const year = new Date().getFullYear();
 
   return (
-    <footer
-      className="border-t border-border bg-background"
-      data-testid="footer"
-    >
+    <footer className="bg-primary text-primary-foreground" data-testid="footer">
       <Container className="py-12">
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
           <div className="col-span-2 space-y-3 md:col-span-1">
@@ -26,7 +23,7 @@ export function Footer() {
             >
               {siteConfig.name}
             </Link>
-            <p className="max-w-xs text-sm text-muted-foreground">
+            <p className="max-w-xs text-sm text-primary-foreground/70">
               {siteConfig.description}
             </p>
           </div>
@@ -39,7 +36,7 @@ export function Footer() {
                   <li key={`${column.title}-${item.href}`}>
                     <Link
                       href={item.href}
-                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                      className="text-sm text-primary-foreground/70 transition-colors hover:text-primary-foreground hover:underline"
                       data-testid={`footer-link-${slug(column.title)}-${slug(item.title)}`}
                     >
                       {item.title}
@@ -51,14 +48,14 @@ export function Footer() {
           ))}
         </div>
 
-        <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-border pt-6 sm:flex-row">
-          <p className="text-sm text-muted-foreground">
+        <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-primary-foreground/10 pt-6 sm:flex-row">
+          <p className="text-sm text-primary-foreground/70">
             © {year} {siteConfig.name}. All rights reserved.
           </p>
-          <div className="flex gap-4 text-sm text-muted-foreground">
+          <div className="flex gap-4 text-sm text-primary-foreground/70">
             <a
               href={siteConfig.links.twitter}
-              className="transition-colors hover:text-foreground"
+              className="transition-colors hover:text-primary-foreground hover:underline"
               target="_blank"
               rel="noreferrer"
               data-testid="footer-social-twitter"
@@ -67,7 +64,7 @@ export function Footer() {
             </a>
             <a
               href={siteConfig.links.github}
-              className="transition-colors hover:text-foreground"
+              className="transition-colors hover:text-primary-foreground hover:underline"
               target="_blank"
               rel="noreferrer"
               data-testid="footer-social-github"

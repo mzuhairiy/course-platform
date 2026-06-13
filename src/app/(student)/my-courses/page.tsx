@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Heading, Text } from "@/components/ui/typography";
 import { getCurrentUser } from "@/lib/auth";
 import { getEnrolledCourses } from "@/server/services/enrollment";
+import { getCourseProgress } from "@/server/services/progress";
 
 export const metadata: Metadata = {
   title: "My Courses",
@@ -21,6 +22,11 @@ export default async function MyCoursesPage() {
   }
 
   const enrollments = await getEnrolledCourses(user.id);
+  const progressByCourse = await Promise.all(
+    enrollments.map((enrollment) =>
+      getCourseProgress(user.id, enrollment.course.id),
+    ),
+  );
 
   return (
     <Section spacing="compact">
@@ -37,8 +43,12 @@ export default async function MyCoursesPage() {
 
         {enrollments.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {enrollments.map((enrollment) => (
-              <EnrolledCourseCard key={enrollment.id} enrollment={enrollment} />
+            {enrollments.map((enrollment, i) => (
+              <EnrolledCourseCard
+                key={enrollment.id}
+                enrollment={enrollment}
+                progress={progressByCourse[i]}
+              />
             ))}
           </div>
         ) : (

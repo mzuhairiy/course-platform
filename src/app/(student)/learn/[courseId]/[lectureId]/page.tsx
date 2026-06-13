@@ -12,6 +12,7 @@ import { SIGN_IN_ROUTE } from "@/config/routes";
 import { getCurrentUser } from "@/lib/auth";
 import { getCourseForLearn } from "@/server/services/course";
 import { findEnrollment } from "@/server/services/enrollment";
+import { getCourseProgress } from "@/server/services/progress";
 
 export const metadata: Metadata = {
   title: "Learning",
@@ -48,12 +49,27 @@ export default async function LearnPage({ params }: PageProps) {
   const prev = lectures[index - 1] ?? null;
   const next = lectures[index + 1] ?? null;
 
+  const progress = await getCourseProgress(user.id, course.id);
+  const completedLectureIds = Object.entries(progress.perLecture)
+    .filter(([, value]) => value.completed)
+    .map(([id]) => id);
+  const currentProgress = progress.perLecture[current.id] ?? {
+    completed: false,
+    watchedSeconds: 0,
+  };
+
   const sidebar = (
     <LearnSidebar
       courseId={course.id}
       courseSlug={course.slug}
       courseTitle={course.title}
       currentLectureId={current.id}
+      completedLectureIds={completedLectureIds}
+      progress={{
+        completed: progress.completed,
+        total: progress.total,
+        percentage: progress.percentage,
+      }}
       sections={course.sections.map((section) => ({
         id: section.id,
         title: section.title,
@@ -69,7 +85,7 @@ export default async function LearnPage({ params }: PageProps) {
   return (
     <LearnShell sidebar={sidebar}>
       <div className="space-y-6">
-        <LectureView lecture={current} />
+        <LectureView lecture={current} progress={currentProgress} />
 
         <nav
           className="flex items-center justify-between border-t border-border pt-4"

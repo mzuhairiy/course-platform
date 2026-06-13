@@ -504,37 +504,49 @@ Inspired by Maven.com — clean, minimalis, edukatif-friendly. Premium tanpa fla
 
 ### Colors
 
-```ts
-// tailwind.config.ts — extend
-{
-  colors: {
-    // Base
-    background: "hsl(0 0% 100%)",       // white
-    foreground: "hsl(220 13% 13%)",     // near-black
+Palet: **putih + navy** (Maven-style). Implementasi via CSS variables di
+`src/app/globals.css` (HSL triplet) + token Tailwind di `tailwind.config.ts`
+(`hsl(var(--x))`). Nama token di bawah = nama yang dipakai di kode.
 
-    // Surface
-    surface: "hsl(40 20% 97%)",         // soft cream
-    "surface-muted": "hsl(220 14% 96%)",
+```css
+/* globals.css — :root (nilai aktual) */
+--background: 0 0% 100%;        /* white */
+--foreground: 222 30% 12%;      /* near-black kebiruan (heading & body) */
 
-    // Border
-    border: "hsl(220 13% 91%)",
-    "border-strong": "hsl(220 13% 80%)",
+/* Surface */
+--surface: 40 20% 97%;          /* soft cream */
+--surface-muted: 220 14% 96%;
 
-    // Text
-    "text-muted": "hsl(220 9% 46%)",
-    "text-subtle": "hsl(220 9% 60%)",
+/* Border */
+--border: 220 13% 91%;
+--border-strong: 222 25% 65%;   /* navy subtle — dipakai hover course card */
 
-    // Accent (sparingly used)
-    accent: "hsl(15 80% 50%)",          // warm orange (Maven-like)
-    "accent-hover": "hsl(15 80% 45%)",
+/* Text sekunder */
+--muted-foreground: 220 9% 46%; /* dipakai via text-muted-foreground */
+--subtle: 220 9% 60%;
 
-    // Semantic
-    success: "hsl(142 76% 36%)",
-    warning: "hsl(38 92% 50%)",
-    danger: "hsl(0 84% 60%)",
-  }
-}
+/* Primary / brand — navy (accent utama, link, focus ring) */
+--primary: 236 63% 10%;     /* navy pekat (#090b28); button primary, footer/navbar/hero bg */
+--brand: 236 63% 10%;       /* alias semantik utk aksen (= primary) */
+--brand-hover: 236 63% 18%; /* hover sedikit lebih terang */
+--ring: 236 63% 10%;        /* focus ring navy */
+--accent: 222 20% 95%;          /* interaction surface netral (hover menu) */
+
+/* Semantic — TIDAK ikut navy */
+--success: 142 76% 36%;
+--warning: 38 92% 50%;
+--destructive: 0 84% 60%;       /* "danger" */
 ```
+
+Catatan pemakaian:
+- **Button** primary = navy bg + teks putih (`bg-primary`); secondary = putih
+  + border & teks navy; link = `text-primary` underline on hover.
+- **Footer** = navy gelap (`bg-primary`) dengan teks putih, link
+  `primary-foreground/70` → putih saat hover (Maven-style).
+- **Navbar** tetap putih, border bottom subtle, active link navy.
+- Hex hardcode hanya untuk aset yang tak bisa baca CSS var (favicon, OG image):
+  `#090b28` = `hsl(236 63% 10%)`, disentralisasi di `BRAND_NAVY_HEX`
+  (`src/config/site.ts`).
 
 ### Typography
 

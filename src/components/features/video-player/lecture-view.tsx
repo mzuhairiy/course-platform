@@ -1,14 +1,22 @@
 import ReactMarkdown from "react-markdown";
 
+import { MarkCompleteButton } from "@/components/features/video-player/mark-complete-button";
+import { VideoLecture } from "@/components/features/video-player/video-lecture";
 import { Heading, Text } from "@/components/ui/typography";
+import type { PerLectureProgress } from "@/server/services/progress";
 import type { LearnLecture } from "@/server/services/course";
 
-// Fase 1 uses a public sample MP4 via a plain HTML5 <video>. Mux playback
-// (lecture.videoPlaybackId) is wired in Fase 4.
-const SAMPLE_VIDEO_URL =
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+// Fallback if a VIDEO lecture somehow has no URL (all seeded lectures use the
+// local sample clip). Mux playback (videoPlaybackId) lands in Fase 4.
+const SAMPLE_VIDEO_URL = "/sample-lecture.mp4";
 
-export function LectureView({ lecture }: { lecture: LearnLecture }) {
+export function LectureView({
+  lecture,
+  progress,
+}: {
+  lecture: LearnLecture;
+  progress: PerLectureProgress;
+}) {
   return (
     <div className="space-y-4" data-testid="lecture-view">
       <Heading as="h1" level="h3" data-testid="lecture-title">
@@ -16,32 +24,44 @@ export function LectureView({ lecture }: { lecture: LearnLecture }) {
       </Heading>
 
       {lecture.type === "VIDEO" ? (
-        <video
-          controls
-          preload="metadata"
+        <VideoLecture
+          lectureId={lecture.id}
           src={lecture.videoUrl ?? SAMPLE_VIDEO_URL}
-          className="aspect-video w-full rounded-lg border border-border bg-black"
-          data-testid="video-player"
-        >
-          Browser kamu tidak mendukung tag video.
-        </video>
+          durationSeconds={lecture.durationSeconds}
+          initialWatchedSeconds={progress.watchedSeconds}
+          initialCompleted={progress.completed}
+        />
       ) : null}
 
       {lecture.type === "READING" ? (
-        <div
-          className="prose prose-neutral max-w-none"
-          data-testid="reading-content"
-        >
-          <ReactMarkdown>{lecture.contentMd ?? ""}</ReactMarkdown>
+        <div className="space-y-6">
+          <div
+            className="prose prose-neutral max-w-none"
+            data-testid="reading-content"
+          >
+            <ReactMarkdown>{lecture.contentMd ?? ""}</ReactMarkdown>
+          </div>
+          <MarkCompleteButton
+            lectureId={lecture.id}
+            initialCompleted={progress.completed}
+          />
         </div>
       ) : null}
 
       {lecture.type === "QUIZ" ? (
-        <div
-          className="rounded-lg border border-dashed border-border p-12 text-center"
-          data-testid="quiz-placeholder"
-        >
-          <Text variant="muted">Quiz akan tersedia di Fase 3.</Text>
+        <div className="space-y-6">
+          <div
+            className="rounded-lg border border-dashed border-border p-12 text-center"
+            data-testid="quiz-placeholder"
+          >
+            <Text variant="muted">Quiz akan tersedia di Fase 3.</Text>
+          </div>
+          {/* No quiz engine yet: QUIZ placeholders are completed manually and
+              still count toward course progress (see getCourseProgress). */}
+          <MarkCompleteButton
+            lectureId={lecture.id}
+            initialCompleted={progress.completed}
+          />
         </div>
       ) : null}
     </div>

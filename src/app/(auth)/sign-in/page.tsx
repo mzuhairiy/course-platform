@@ -36,7 +36,7 @@ export default function SignInPage({
             Belum punya akun?{" "}
             <Link
               href={SIGN_UP_ROUTE}
-              className="font-medium text-foreground underline-offset-4 hover:underline"
+              className="font-medium text-primary underline-offset-4 hover:underline"
               data-testid="link-sign-up"
             >
               Sign up

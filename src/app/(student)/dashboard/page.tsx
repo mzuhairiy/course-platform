@@ -13,6 +13,7 @@ import {
   getEnrolledCourses,
   getEnrollmentStats,
 } from "@/server/services/enrollment";
+import { getCourseProgress } from "@/server/services/progress";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -51,6 +52,11 @@ export default async function DashboardPage() {
     getEnrolledCourses(user.id, 3),
     getEnrollmentStats(user.id),
   ]);
+  const progressByCourse = await Promise.all(
+    enrollments.map((enrollment) =>
+      getCourseProgress(user.id, enrollment.course.id),
+    ),
+  );
 
   return (
     <Section spacing="compact">
@@ -89,10 +95,11 @@ export default async function DashboardPage() {
 
           {enrollments.length > 0 ? (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {enrollments.map((enrollment) => (
+              {enrollments.map((enrollment, i) => (
                 <EnrolledCourseCard
                   key={enrollment.id}
                   enrollment={enrollment}
+                  progress={progressByCourse[i]}
                 />
               ))}
             </div>

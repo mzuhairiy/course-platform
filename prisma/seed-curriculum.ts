@@ -1,28 +1,10 @@
 import { LectureType } from "@prisma/client";
 
-// Creative-Commons sample videos (Google test bucket) with their real durations.
-const SAMPLE_VIDEOS: { url: string; duration: number }[] = [
-  {
-    url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-    duration: 596,
-  },
-  {
-    url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-    duration: 653,
-  },
-  {
-    url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
-    duration: 888,
-  },
-  {
-    url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
-    duration: 734,
-  },
-  {
-    url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-    duration: 15,
-  },
-];
+// One small local Creative-Commons clip (~10s, <1MB) is reused for every VIDEO
+// lecture, served from /public. Keeps the repo light and progress tracking fast
+// to exercise end-to-end. The duration matches the actual clip length.
+const SAMPLE_VIDEO_URL = "/sample-lecture.mp4";
+const SAMPLE_VIDEO_DURATION = 10;
 
 type LessonBlueprint = { title: string; reading?: boolean };
 type SectionBlueprint = { title: string; lessons: LessonBlueprint[] };
@@ -107,7 +89,6 @@ export function generateCurriculum(
 ): GeneratedSection[] {
   const sectionCount = 3 + (courseIndex % 3); // 3..5
   const blueprints = SECTION_BLUEPRINTS.slice(0, sectionCount);
-  let videoCounter = courseIndex;
 
   return blueprints.map((blueprint, si) => {
     const isLast = si === blueprints.length - 1;
@@ -129,13 +110,11 @@ export function generateCurriculum(
         };
       }
 
-      const video = SAMPLE_VIDEOS[videoCounter % SAMPLE_VIDEOS.length];
-      videoCounter += 1;
       return {
         ...base,
         type: LectureType.VIDEO,
-        durationSeconds: video.duration,
-        videoUrl: video.url,
+        durationSeconds: SAMPLE_VIDEO_DURATION,
+        videoUrl: SAMPLE_VIDEO_URL,
         contentMd: null,
       };
     });

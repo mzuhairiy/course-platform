@@ -6,17 +6,11 @@ export const mainNav: NavItem[] = [
   { title: "About", href: "/about" },
 ];
 
-/** Categories dropdown. Static for now; wired to the DB filter in Prompt 7. */
-export const categoryNav: NavItem[] = [
-  { title: "Programming", href: "/courses?category=programming" },
-  { title: "Design", href: "/courses?category=design" },
-  { title: "Business", href: "/courses?category=business" },
-];
-
 /** Authenticated user dropdown items (Sign out is rendered separately). */
 export const userNav: NavItem[] = [
   { title: "Dashboard", href: "/dashboard" },
   { title: "My Courses", href: "/my-courses" },
+  { title: "Purchase History", href: "/purchase-history" },
   { title: "Settings", href: "/settings" },
 ];
 

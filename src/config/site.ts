@@ -10,3 +10,9 @@ export const siteConfig = {
 } as const;
 
 export type SiteConfig = typeof siteConfig;
+
+/**
+ * #090b28 ≈ hsl(236 63% 10%) — keep in sync with --primary in globals.css.
+ * Only for surfaces that cannot read CSS variables (OG image, favicon).
+ */
+export const BRAND_NAVY_HEX = "#090b28";

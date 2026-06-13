@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { CourseCurriculum } from "@/components/features/course/course-curriculum";
+import { CourseProgressBar } from "@/components/features/course/course-progress-bar";
 import { EnrollCard } from "@/components/features/course/enroll-card";
 import { Container } from "@/components/shared/container";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -16,6 +17,7 @@ import {
   type CourseDetail,
 } from "@/server/services/course";
 import { findEnrollment } from "@/server/services/enrollment";
+import { getCourseProgress } from "@/server/services/progress";
 
 type PageProps = { params: { slug: string } };
 
@@ -53,6 +55,8 @@ export default async function CourseDetailPage({ params }: PageProps) {
   const isEnrolled = user
     ? Boolean(await findEnrollment(user.id, course.id))
     : false;
+  const courseProgress =
+    user && isEnrolled ? await getCourseProgress(user.id, course.id) : null;
 
   const firstLectureId = course.sections[0]?.lectures[0]?.id ?? null;
   const totalLectures = course.sections.reduce(
@@ -99,6 +103,15 @@ export default async function CourseDetailPage({ params }: PageProps) {
               {course.instructor.name}
             </Text>
           </div>
+          {courseProgress ? (
+            <div className="max-w-md pt-2" data-testid="course-header-progress">
+              <CourseProgressBar
+                completed={courseProgress.completed}
+                total={courseProgress.total}
+                percentage={courseProgress.percentage}
+              />
+            </div>
+          ) : null}
         </Container>
       </div>
 
@@ -111,6 +124,7 @@ export default async function CourseDetailPage({ params }: PageProps) {
                 slug={course.slug}
                 title={course.title}
                 thumbnailUrl={course.thumbnailUrl}
+                coverLabel={course.coverLabel}
                 price={course.price}
                 level={course.level}
                 totalLectures={totalLectures}

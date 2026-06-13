@@ -8,6 +8,8 @@ export const SIGN_UP_ROUTE = "/sign-up";
 export const PROTECTED_PREFIXES = [
   "/dashboard",
   "/my-courses",
+  "/purchase-history",
+  "/settings",
   "/learn",
   "/instructor",
   "/admin",

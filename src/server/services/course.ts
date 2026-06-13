@@ -43,12 +43,24 @@ function sortToOrderBy(sort: SortValue): Prisma.CourseOrderByWithRelationInput {
   }
 }
 
+/** Case-insensitive keyword match on title + subtitle. */
+function keywordWhere(query: string): Prisma.CourseWhereInput {
+  return {
+    OR: [
+      { title: { contains: query, mode: "insensitive" } },
+      { subtitle: { contains: query, mode: "insensitive" } },
+    ],
+  };
+}
+
 export async function getCoursesWithCount(filters: CourseFilters) {
   const where: Prisma.CourseWhereInput = {
     status: CourseStatus.PUBLISHED,
+    ...(filters.q ? keywordWhere(filters.q) : {}),
     ...(filters.categories.length > 0
       ? { category: { slug: { in: filters.categories } } }
       : {}),
+    ...(filters.instructor ? { instructorId: filters.instructor } : {}),
     ...(filters.levels.length > 0 ? { level: { in: filters.levels } } : {}),
     ...(filters.price === "free"
       ? { price: 0 }
@@ -141,6 +153,24 @@ export function getCourseForLearn(courseId: string) {
   return db.course.findUnique({
     where: { id: courseId },
     select: courseLearnSelect,
+  });
+}
+
+const searchResultSelect = {
+  id: true,
+  slug: true,
+  title: true,
+  price: true,
+  category: { select: { name: true } },
+} satisfies Prisma.CourseSelect;
+
+/** Live-search for the navbar suggestions dropdown. PUBLISHED only. */
+export function searchPublishedCourses(query: string, limit: number) {
+  return db.course.findMany({
+    where: { status: CourseStatus.PUBLISHED, ...keywordWhere(query) },
+    select: searchResultSelect,
+    orderBy: { publishedAt: "desc" },
+    take: limit,
   });
 }
 

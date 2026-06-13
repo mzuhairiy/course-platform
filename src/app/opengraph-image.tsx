@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-import { siteConfig } from "@/config/site";
+import { BRAND_NAVY_HEX, siteConfig } from "@/config/site";
 
 export const alt = siteConfig.name;
 export const size = { width: 1200, height: 630 };
@@ -16,7 +16,7 @@ export default function OpengraphImage() {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        background: "#0f1115",
+        background: BRAND_NAVY_HEX,
         color: "#ffffff",
       }}
     >

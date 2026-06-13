@@ -1,5 +1,6 @@
 import Image from "next/image";
 
+import { CourseCover } from "@/components/features/course/course-cover";
 import { EnrollButton } from "@/components/features/course/enroll-button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatDate, formatDuration, formatPrice } from "@/lib/format";
@@ -9,6 +10,7 @@ type EnrollCardProps = {
   slug: string;
   title: string;
   thumbnailUrl: string | null;
+  coverLabel: string | null;
   price: number;
   level: string;
   totalLectures: number;
@@ -31,8 +33,8 @@ function MetaRow({ label, value }: { label: string; value: string }) {
 export function EnrollCard(props: EnrollCardProps) {
   return (
     <Card className="overflow-hidden" data-testid="enroll-card">
-      <div className="relative aspect-video w-full bg-surface-muted">
-        {props.thumbnailUrl ? (
+      {props.thumbnailUrl ? (
+        <div className="relative aspect-video w-full bg-surface-muted">
           <Image
             src={props.thumbnailUrl}
             alt={props.title}
@@ -40,8 +42,13 @@ export function EnrollCard(props: EnrollCardProps) {
             sizes="360px"
             className="object-cover"
           />
-        ) : null}
-      </div>
+        </div>
+      ) : (
+        <CourseCover
+          label={props.coverLabel ?? props.title}
+          seed={props.slug}
+        />
+      )}
       <CardContent className="space-y-4 pt-6">
         <p className="text-2xl font-semibold" data-testid="enroll-price">
           {formatPrice(props.price)}

@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { CategoryCard } from "@/components/features/category/category-card";
 import { CourseCard } from "@/components/features/course/course-card";
-import { InstructorCard } from "@/components/features/instructor/instructor-card";
+import { InstructorShowcase } from "@/components/features/instructor/instructor-showcase";
 import { Container } from "@/components/shared/container";
 import { Section } from "@/components/shared/section";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { Heading, Text } from "@/components/ui/typography";
 import { siteConfig } from "@/config/site";
 import { getCategoriesWithCourseCount } from "@/server/services/category";
 import { getFeaturedCourses } from "@/server/services/course";
-import { getSpotlightInstructors } from "@/server/services/instructor";
+import { getShowcaseInstructors } from "@/server/services/instructor";
 
 const valueProps = [
   {
@@ -35,26 +35,43 @@ export default async function HomePage() {
   const [categories, featuredCourses, instructors] = await Promise.all([
     getCategoriesWithCourseCount(),
     getFeaturedCourses(3),
-    getSpotlightInstructors(2),
+    getShowcaseInstructors(),
   ]);
 
   return (
     <>
-      <Section data-testid="hero-section" className="bg-surface">
+      <Section
+        data-testid="hero-section"
+        className="bg-primary text-primary-foreground"
+      >
         <Container className="flex flex-col items-center gap-6 text-center">
-          <Heading as="h1" level="display" className="max-w-3xl">
+          <Heading
+            as="h1"
+            level="display"
+            className="max-w-3xl text-primary-foreground"
+          >
             Belajar skill baru, sesuai kecepatanmu
           </Heading>
-          <Text variant="lead" className="max-w-2xl">
+          <Text variant="lead" className="max-w-2xl text-primary-foreground/80">
             {siteConfig.description}
           </Text>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <Button asChild size="lg">
+          <div className="flex flex-wrap items-center justify-center gap-6">
+            <Button
+              asChild
+              size="lg"
+              variant="link"
+              className="text-base font-semibold text-primary-foreground hover:text-primary-foreground"
+            >
               <Link href="/courses" data-testid="hero-cta-browse">
                 Browse Courses
               </Link>
             </Button>
-            <Button asChild size="lg" variant="outline">
+            <Button
+              asChild
+              size="lg"
+              variant="link"
+              className="text-base text-primary-foreground/80 hover:text-primary-foreground"
+            >
               <Link href="#how-it-works" data-testid="hero-cta-how">
                 How it works
               </Link>
@@ -125,18 +142,7 @@ export default async function HomePage() {
         </Container>
       </Section>
 
-      <Section data-testid="instructor-spotlight-section" spacing="compact">
-        <Container className="space-y-6">
-          <Heading as="h2" level="h2">
-            Belajar dari instruktur terbaik
-          </Heading>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-            {instructors.map((instructor) => (
-              <InstructorCard key={instructor.id} instructor={instructor} />
-            ))}
-          </div>
-        </Container>
-      </Section>
+      <InstructorShowcase instructors={instructors} />
 
       <Section data-testid="cta-section">
         <Container>

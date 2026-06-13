@@ -4,35 +4,35 @@
 
 @layer base {
   :root {
-    /* shadcn/ui tokens — tuned to the Maven-inspired palette (PROJECT_PLAN §5) */
+    /* shadcn/ui tokens — white + navy palette, Maven-inspired (PROJECT_PLAN §5) */
     --background: 0 0% 100%;
-    --foreground: 220 13% 13%;
+    --foreground: 222 30% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 220 13% 13%;
+    --card-foreground: 222 30% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 220 13% 13%;
-    --primary: 220 13% 13%;
+    --popover-foreground: 222 30% 12%;
+    --primary: 236 63% 10%;
     --primary-foreground: 0 0% 100%;
     --secondary: 40 20% 97%;
-    --secondary-foreground: 220 13% 13%;
+    --secondary-foreground: 222 30% 12%;
     --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 46%;
-    --accent: 220 14% 96%;
-    --accent-foreground: 220 13% 13%;
+    --muted-foreground: 220 9% 43%;
+    --accent: 222 20% 95%;
+    --accent-foreground: 222 30% 12%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     --border: 220 13% 91%;
     --input: 220 13% 91%;
-    --ring: 15 80% 50%;
+    --ring: 236 63% 10%;
     --radius: 0.5rem;
 
     /* Extra design-system tokens (PROJECT_PLAN §5) */
     --surface: 40 20% 97%;
     --surface-muted: 220 14% 96%;
-    --border-strong: 220 13% 80%;
-    --brand: 15 80% 50%;
+    --border-strong: 222 25% 65%;
+    --brand: 236 63% 10%;
     --brand-foreground: 0 0% 100%;
-    --brand-hover: 15 80% 45%;
+    --brand-hover: 236 63% 18%;
     --subtle: 220 9% 60%;
     --success: 142 76% 36%;
     --warning: 38 92% 50%;
@@ -58,7 +58,7 @@
     --destructive-foreground: 0 0% 98%;
     --border: 220 13% 20%;
     --input: 220 13% 20%;
-    --ring: 15 80% 50%;
+    --ring: 236 63% 60%;
   }
 }
 

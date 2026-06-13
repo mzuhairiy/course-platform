@@ -1,12 +1,16 @@
 import type { CourseLevel } from "@prisma/client";
 
+import { SEARCH_MAX_QUERY_LENGTH } from "@/config/search";
+
 // Type-only Prisma import above keeps this module client-safe (no @prisma/client
 // in the browser bundle). Shared by the server page and the client filter UI.
 
 export const QUERY_KEYS = {
+  q: "q",
   category: "category",
   level: "level",
   price: "price",
+  instructor: "instructor",
   sort: "sort",
   page: "page",
 } as const;
@@ -36,9 +40,11 @@ export type PriceValue = (typeof PRICE_OPTIONS)[number]["value"];
 export const PER_PAGE = 9;
 
 export type CourseFilters = {
+  q: string;
   categories: string[];
   levels: CourseLevel[];
   price: PriceValue;
+  instructor: string;
   sort: SortValue;
   page: number;
 };
@@ -69,10 +75,18 @@ export function parseCourseFilters(searchParams: SearchParams): CourseFilters {
   const pageRaw = Number(searchParams[QUERY_KEYS.page]);
   const page = Number.isInteger(pageRaw) && pageRaw > 0 ? pageRaw : 1;
 
+  const q = (toArray(searchParams[QUERY_KEYS.q])[0] ?? "")
+    .trim()
+    .slice(0, SEARCH_MAX_QUERY_LENGTH);
+
+  const instructor = (toArray(searchParams[QUERY_KEYS.instructor])[0] ?? "").trim();
+
   return {
+    q,
     categories: toArray(searchParams[QUERY_KEYS.category]),
     levels,
     price,
+    instructor,
     sort,
     page,
   };
@@ -81,8 +95,11 @@ export function parseCourseFilters(searchParams: SearchParams): CourseFilters {
 /** Serializes filters (minus page) so pagination links can preserve them. */
 export function buildBaseQuery(filters: CourseFilters): string {
   const params = new URLSearchParams();
+  if (filters.q) params.set(QUERY_KEYS.q, filters.q);
   filters.categories.forEach((c) => params.append(QUERY_KEYS.category, c));
   filters.levels.forEach((l) => params.append(QUERY_KEYS.level, l));
+  if (filters.instructor)
+    params.set(QUERY_KEYS.instructor, filters.instructor);
   if (filters.price !== "all") params.set(QUERY_KEYS.price, filters.price);
   if (filters.sort !== DEFAULT_SORT) params.set(QUERY_KEYS.sort, filters.sort);
   return params.toString();
