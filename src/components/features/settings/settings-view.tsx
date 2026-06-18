@@ -28,9 +28,14 @@ type SettingsUser = {
   role: UserRole;
 };
 
-const HOME_ROUTE = "/";
-
-export function SettingsView({ user }: { user: SettingsUser }) {
+export function SettingsView({
+  user,
+  backHref = "/",
+}: {
+  user: SettingsUser;
+  /** Where the "back" button returns to — each persona has its own home. */
+  backHref?: string;
+}) {
   const router = useRouter();
   const [profileDirty, setProfileDirty] = useState(false);
   const [securityDirty, setSecurityDirty] = useState(false);
@@ -62,7 +67,7 @@ export function SettingsView({ user }: { user: SettingsUser }) {
     if (hasUnsavedChanges) {
       setDialogOpen(true);
     } else {
-      router.push(HOME_ROUTE);
+      router.push(backHref);
     }
   }
 
@@ -121,7 +126,7 @@ export function SettingsView({ user }: { user: SettingsUser }) {
               data-testid="unsaved-confirm-leave"
               onClick={() => {
                 setDialogOpen(false);
-                router.push(HOME_ROUTE);
+                router.push(backHref);
               }}
             >
               Keluar tanpa menyimpan

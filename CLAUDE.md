@@ -1,7 +1,13 @@
 # CLAUDE.md
 
-Rules of engagement untuk project ini. Baca ini setiap sesi.
-**Detail lengkap (schema, design system, build prompts) ada di `PROJECT_PLAN.md` — buka file itu saat butuh detail.**
+Rules of engagement untuk project ini. Baca ini setiap sesi. **File ini adalah source of truth untuk aturan koding.**
+
+Peta dokumen — buka saat butuh detail:
+- `PROJECT_PLAN.md` — index/peta + project brief + roadmap.
+- `docs/reference/schema.md` — Prisma schema (struktur data).
+- `docs/reference/design-system.md` — warna (navy+putih), tipografi, spacing.
+- `docs/reference/architecture.md` — tech stack, folder structure, env & repo strategy.
+- `docs/plan/phase-*.md` — build prompt per fase (lihat status di `PROJECT_PLAN.md`).
 
 ---
 
@@ -15,7 +21,7 @@ Showcase features (yang akan di-test paling dalam nanti): **Checkout & Payment, 
 
 ## Tech Stack
 
-Next.js 14+ (App Router) · TypeScript strict · PostgreSQL · Prisma · Auth.js v5 · Tailwind + shadcn/ui · React Hook Form + Zod · Midtrans (payment) · Mux (video) · Cloudflare R2 (storage) · Deploy ke Vercel.
+Next.js 14+ (App Router) · TypeScript strict · PostgreSQL · Prisma · Auth.js v5 · Tailwind + shadcn/ui · React Hook Form + Zod · Midtrans (payment) · Cloudflare R2 (storage) · Deploy ke Vercel. Video via URL input (Mux di-drop).
 
 Arsitektur: Server Components default, Client Components hanya saat butuh interactivity. Mutation lewat Server Actions. Route Handlers (`/api/`) cuma untuk webhook.
 
@@ -36,16 +42,16 @@ Tanggung jawab repo ini ke automation repo: sediakan **testability hooks** yang 
 
 ## Folder Structure & Naming
 
-Struktur lengkap ada di `PROJECT_PLAN.md` section 3. Ringkas:
+Struktur lengkap ada di `docs/reference/architecture.md`. Ringkas:
 
 ```
 src/app/          # Routes (grouped: (marketing), (auth), (student), (instructor), (admin))
 src/components/   # ui/ (shadcn) · shared/ · features/
-src/lib/          # db, auth, midtrans, mux, utils
+src/lib/          # db, auth, midtrans, utils
 src/server/       # actions/ · services/ (business logic)
 src/schemas/      # Zod schemas (shared client+server)
 tests/            # unit/ · components/ HANYA (white-box)
-docs/             # adr/ · test-strategy.md · risk-matrix.md
+docs/             # reference/ (schema, design, architecture) · plan/ (phase-*) · adr/
 prisma/           # schema.prisma · migrations/ · seed.ts
 ```
 
@@ -97,7 +103,7 @@ Ini kontrak ke automation repo. Setiap fitur yang dibuat HARUS punya:
 
 ## Workflow per Task
 
-Build dikerjakan **satu prompt = satu unit kerja** (lihat `PROJECT_PLAN.md` section 8). Untuk setiap task:
+Build dikerjakan **satu prompt = satu unit kerja** (lihat `docs/plan/phase-*.md`). Untuk setiap task:
 
 1. Kerjain HANYA scope task itu. **Jangan scope creep** ("sekalian tambahin X") — kalau nemu hal di luar scope, sebutin ke user, jangan langsung kerjain.
 2. Sebelum selesai, run dan pastikan hijau:
@@ -114,14 +120,18 @@ Kalau ada yang merah di step 2, **fix dulu sebelum lapor selesai**. Jangan numpu
 
 ## Saat Mulai Build
 
-Build sequence ada di `PROJECT_PLAN.md` section 8 (Prompt 1–10 untuk Fase 1 MVP). Saat user kasih nomor prompt, buka PROJECT_PLAN.md, baca prompt itu + acceptance criteria-nya, baru kerjain.
+Build prompt ada di `docs/plan/phase-*.md` (cek status tiap fase di `PROJECT_PLAN.md`). Saat user kasih nomor/kode prompt + nama fase, buka file fase terkait, baca prompt itu + acceptance criteria-nya, baru kerjain.
 
-Kalau butuh detail schema → `PROJECT_PLAN.md` section 4.
-Kalau butuh detail design (warna, font, spacing) → `PROJECT_PLAN.md` section 5.
+Kalau butuh detail schema → `docs/reference/schema.md`.
+Kalau butuh detail design (warna, font, spacing) → `docs/reference/design-system.md`.
+Kalau butuh detail struktur/arsitektur → `docs/reference/architecture.md`.
+
+Kalau sebuah fitur menyentuh schema, update `docs/reference/schema.md` dulu sebelum bikin migration.
 
 ---
 
 ## Fokus Saat Ini
 
-**Build aplikasi course platform (Fase 1 MVP) + linting + type-check + unit test.**
-CI/CD, environment staging, automation repo, dan Fase 2+ ditunda sampai Fase 1 stable.
+**Fase 3 — Learning Experience (`docs/plan/phase-3-learning.md`): progress tracking, certificate, quiz engine.**
+Fase 1 (MVP), 1B (content), dan ad-hoc features (search, theme navy, profile, course cover) sudah DONE.
+Fase 2 (Checkout & Midtrans) ditunda — dikerjakan setelah Fase 3. CI/CD, environment staging, dan automation repo menyusul, beririsan dengan fase testing.

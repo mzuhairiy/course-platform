@@ -30,6 +30,7 @@ vi.mock("@/lib/db", () => ({
 
 import {
   getCourseProgress,
+  getResumeLecture,
   updateLectureProgress,
 } from "@/server/services/progress";
 
@@ -160,5 +161,38 @@ describe("getCourseProgress", () => {
 
     expect(result.percentage).toBe(100);
     expect(result.completed).toBe(2);
+  });
+});
+
+describe("getResumeLecture", () => {
+  it("returns the first incomplete lecture when some are complete", async () => {
+    // Curriculum order is the order returned by findMany (a, b, c).
+    lectureFindMany.mockResolvedValue([{ id: "a" }, { id: "b" }, { id: "c" }]);
+    progressFindMany.mockResolvedValue([{ lectureId: "a" }]);
+
+    const result = await getResumeLecture("user_1", "course_1");
+
+    expect(result).toBe("b");
+  });
+
+  it("returns the first lecture when every lecture is complete", async () => {
+    lectureFindMany.mockResolvedValue([{ id: "a" }, { id: "b" }]);
+    progressFindMany.mockResolvedValue([
+      { lectureId: "a" },
+      { lectureId: "b" },
+    ]);
+
+    const result = await getResumeLecture("user_1", "course_1");
+
+    expect(result).toBe("a");
+  });
+
+  it("returns null when the course has no lectures", async () => {
+    lectureFindMany.mockResolvedValue([]);
+    progressFindMany.mockResolvedValue([]);
+
+    const result = await getResumeLecture("user_1", "course_1");
+
+    expect(result).toBeNull();
   });
 });

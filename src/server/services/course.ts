@@ -1,6 +1,6 @@
 import "server-only";
 
-import { CourseStatus, Prisma } from "@prisma/client";
+import { CourseStatus, Prisma, UserRole } from "@prisma/client";
 import { cache } from "react";
 
 import {
@@ -9,6 +9,8 @@ import {
   type SortValue,
 } from "@/lib/course-filters";
 import { db } from "@/lib/db";
+import { ForbiddenError } from "@/lib/rbac";
+import type { CourseFormInput } from "@/schemas/course";
 
 // Never select the instructor's sensitive fields (e.g. password).
 const courseCardInclude = {
@@ -183,6 +185,223 @@ export function getCourseCertificateMeta(courseId: string) {
       slug: true,
       instructor: { select: { name: true } },
     },
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Instructor course management (Fase 4 Prompt K)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Who is acting on a course — drives ownership checks (ADMIN bypasses). */
+export type CourseActor = { id: string; role: UserRole };
+
+export class CourseNotFoundError extends Error {
+  constructor() {
+    super("Course tidak ditemukan.");
+    this.name = "CourseNotFoundError";
+  }
+}
+
+export class CourseHasEnrollmentsError extends Error {
+  constructor() {
+    super("Course dengan siswa terdaftar tidak bisa dihapus.");
+    this.name = "CourseHasEnrollmentsError";
+  }
+}
+
+export class CourseEmptyContentError extends Error {
+  constructor() {
+    super("Tambahkan minimal 1 lesson sebelum publish.");
+    this.name = "CourseEmptyContentError";
+  }
+}
+
+/** An instructor may only touch their own courses; ADMIN may touch any. */
+function assertOwnership(instructorId: string, actor: CourseActor) {
+  if (actor.role !== UserRole.ADMIN && instructorId !== actor.id) {
+    throw new ForbiddenError("Anda bukan pemilik course ini.");
+  }
+}
+
+/** True when the slug is already used by a different course. */
+export async function slugExists(slug: string, exceptCourseId?: string) {
+  const found = await db.course.findUnique({
+    where: { slug },
+    select: { id: true },
+  });
+  return found != null && found.id !== exceptCourseId;
+}
+
+/** Create a DRAFT course owned by `instructorId` (never trusted from client). */
+export function createCourse(data: CourseFormInput, instructorId: string) {
+  return db.course.create({
+    data: {
+      title: data.title,
+      subtitle: data.subtitle || null,
+      description: data.description,
+      categoryId: data.categoryId,
+      level: data.level,
+      price: data.price,
+      language: data.language,
+      coverLabel: data.coverLabel || null,
+      slug: data.slug,
+      status: CourseStatus.DRAFT,
+      instructorId,
+    },
+    select: { id: true },
+  });
+}
+
+export async function updateCourse(
+  courseId: string,
+  data: CourseFormInput,
+  actor: CourseActor,
+) {
+  const course = await db.course.findUnique({
+    where: { id: courseId },
+    select: { instructorId: true },
+  });
+  if (!course) throw new CourseNotFoundError();
+  assertOwnership(course.instructorId, actor);
+
+  return db.course.update({
+    where: { id: courseId },
+    data: {
+      title: data.title,
+      subtitle: data.subtitle || null,
+      description: data.description,
+      categoryId: data.categoryId,
+      level: data.level,
+      price: data.price,
+      language: data.language,
+      coverLabel: data.coverLabel || null,
+      slug: data.slug,
+    },
+    select: { id: true },
+  });
+}
+
+/** Hard-delete a course (cascades sections/lectures). Blocked if enrolled. */
+export async function deleteCourse(courseId: string, actor: CourseActor) {
+  const course = await db.course.findUnique({
+    where: { id: courseId },
+    select: {
+      instructorId: true,
+      _count: { select: { enrollments: true } },
+    },
+  });
+  if (!course) throw new CourseNotFoundError();
+  assertOwnership(course.instructorId, actor);
+  if (course._count.enrollments > 0) throw new CourseHasEnrollmentsError();
+
+  await db.course.delete({ where: { id: courseId } });
+}
+
+/** Publish: requires ≥1 lecture. publishedAt is stamped once and preserved. */
+export async function publishCourse(courseId: string, actor: CourseActor) {
+  const course = await db.course.findUnique({
+    where: { id: courseId },
+    select: {
+      instructorId: true,
+      publishedAt: true,
+      sections: { select: { _count: { select: { lectures: true } } } },
+    },
+  });
+  if (!course) throw new CourseNotFoundError();
+  assertOwnership(course.instructorId, actor);
+
+  const hasContent = course.sections.some((s) => s._count.lectures > 0);
+  if (!hasContent) throw new CourseEmptyContentError();
+
+  return db.course.update({
+    where: { id: courseId },
+    data: {
+      status: CourseStatus.PUBLISHED,
+      // Keep the original publish timestamp on re-publish (history).
+      publishedAt: course.publishedAt ?? new Date(),
+    },
+    select: { id: true },
+  });
+}
+
+/** Unpublish back to DRAFT; publishedAt is intentionally preserved. */
+export async function unpublishCourse(courseId: string, actor: CourseActor) {
+  const course = await db.course.findUnique({
+    where: { id: courseId },
+    select: { instructorId: true },
+  });
+  if (!course) throw new CourseNotFoundError();
+  assertOwnership(course.instructorId, actor);
+
+  return db.course.update({
+    where: { id: courseId },
+    data: { status: CourseStatus.DRAFT },
+    select: { id: true },
+  });
+}
+
+const instructorCourseSelect = {
+  id: true,
+  slug: true,
+  title: true,
+  status: true,
+  price: true,
+  thumbnailUrl: true,
+  coverLabel: true,
+  createdAt: true,
+  category: { select: { name: true } },
+  _count: { select: { enrollments: true } },
+} satisfies Prisma.CourseSelect;
+
+export type InstructorCourseListItem = Prisma.CourseGetPayload<{
+  select: typeof instructorCourseSelect;
+}>;
+
+/** All courses owned by an instructor, newest first, optionally by status. */
+export function getInstructorCourses(
+  instructorId: string,
+  status?: CourseStatus,
+) {
+  return db.course.findMany({
+    where: { instructorId, ...(status ? { status } : {}) },
+    select: instructorCourseSelect,
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+const courseEditSelect = {
+  id: true,
+  slug: true,
+  title: true,
+  subtitle: true,
+  description: true,
+  categoryId: true,
+  level: true,
+  language: true,
+  price: true,
+  coverLabel: true,
+  status: true,
+  instructorId: true,
+  _count: { select: { enrollments: true } },
+  sections: { select: { id: true, _count: { select: { lectures: true } } } },
+} satisfies Prisma.CourseSelect;
+
+export type CourseForEdit = Prisma.CourseGetPayload<{
+  select: typeof courseEditSelect;
+}>;
+
+export function getCourseForEdit(courseId: string) {
+  return db.course.findUnique({
+    where: { id: courseId },
+    select: courseEditSelect,
+  });
+}
+
+/** Just enough to gate a course sub-page (ownership) and render its header. */
+export function getCourseOwnerMeta(courseId: string) {
+  return db.course.findUnique({
+    where: { id: courseId },
+    select: { id: true, title: true, slug: true, status: true, instructorId: true },
   });
 }
 

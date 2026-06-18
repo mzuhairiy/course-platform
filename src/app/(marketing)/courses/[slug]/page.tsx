@@ -19,7 +19,10 @@ import {
   type CourseDetail,
 } from "@/server/services/course";
 import { findEnrollment } from "@/server/services/enrollment";
-import { getCourseProgress } from "@/server/services/progress";
+import {
+  getCourseProgress,
+  getResumeLecture,
+} from "@/server/services/progress";
 
 type PageProps = { params: { slug: string } };
 
@@ -61,6 +64,12 @@ export default async function CourseDetailPage({ params }: PageProps) {
     user && isEnrolled ? await getCourseProgress(user.id, course.id) : null;
 
   const firstLectureId = course.sections[0]?.lectures[0]?.id ?? null;
+  // When enrolled, "Continue Learning" jumps to the first incomplete lecture
+  // rather than always restarting from the top.
+  const resumeLectureId =
+    user && isEnrolled
+      ? await getResumeLecture(user.id, course.id)
+      : firstLectureId;
   const totalLectures = course.sections.reduce(
     (sum, section) => sum + section.lectures.length,
     0,
@@ -150,7 +159,7 @@ export default async function CourseDetailPage({ params }: PageProps) {
                 updatedAt={course.updatedAt}
                 isLoggedIn={Boolean(user)}
                 isEnrolled={isEnrolled}
-                firstLectureId={firstLectureId}
+                firstLectureId={resumeLectureId}
               />
             </div>
           </aside>
@@ -163,7 +172,10 @@ export default async function CourseDetailPage({ params }: PageProps) {
               <Text variant="body">{course.description}</Text>
             </section>
 
-            {course.sections.length > 0 ? (
+            {/* Section titles double as the "chapters" overview — only useful
+                for multi-section seed courses. Single default-section courses
+                hide it (their internal "Main" title must never show). */}
+            {course.sections.length > 1 ? (
               <section className="space-y-3" data-testid="what-you-learn">
                 <Heading as="h2" level="h3">
                   What you&apos;ll learn

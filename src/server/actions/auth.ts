@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { AuthError } from "next-auth";
 
 import { DEFAULT_LOGIN_REDIRECT } from "@/config/routes";
+import { getRoleHomePath } from "@/config/roles";
 import { signIn, signOut } from "@/lib/auth";
 import {
   signInSchema,
@@ -26,11 +27,17 @@ export async function signInAction(
     return { error: "Input tidak valid" };
   }
 
+  // Land each persona on its own home. An explicit callbackUrl (e.g. a deep
+  // link the user was sent to sign in for) takes precedence; the middleware
+  // still bounces it if it points at the wrong persona's surface.
+  const user = await getUserByEmail(parsed.data.email);
+  const redirectTo = callbackUrl || getRoleHomePath(user?.role);
+
   try {
     await signIn("credentials", {
       email: parsed.data.email,
       password: parsed.data.password,
-      redirectTo: callbackUrl || DEFAULT_LOGIN_REDIRECT,
+      redirectTo,
     });
   } catch (error) {
     // signIn throws a redirect on success; only swallow real auth errors.

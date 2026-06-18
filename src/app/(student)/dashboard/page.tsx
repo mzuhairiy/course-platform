@@ -13,7 +13,10 @@ import {
   getEnrolledCourses,
   getEnrollmentStats,
 } from "@/server/services/enrollment";
-import { getCourseProgress } from "@/server/services/progress";
+import {
+  getCourseProgress,
+  getResumeLecture,
+} from "@/server/services/progress";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -52,11 +55,18 @@ export default async function DashboardPage() {
     getEnrolledCourses(user.id, 3),
     getEnrollmentStats(user.id),
   ]);
-  const progressByCourse = await Promise.all(
-    enrollments.map((enrollment) =>
-      getCourseProgress(user.id, enrollment.course.id),
+  const [progressByCourse, resumeByCourse] = await Promise.all([
+    Promise.all(
+      enrollments.map((enrollment) =>
+        getCourseProgress(user.id, enrollment.course.id),
+      ),
     ),
-  );
+    Promise.all(
+      enrollments.map((enrollment) =>
+        getResumeLecture(user.id, enrollment.course.id),
+      ),
+    ),
+  ]);
 
   return (
     <Section spacing="compact">
@@ -100,6 +110,7 @@ export default async function DashboardPage() {
                   key={enrollment.id}
                   enrollment={enrollment}
                   progress={progressByCourse[i]}
+                  resumeLectureId={resumeByCourse[i]}
                 />
               ))}
             </div>

@@ -21,6 +21,16 @@ export function getCategoriesWithCourseCount() {
   return db.category.findMany(categoryWithCountArgs);
 }
 
+/** id + name for the course form category dropdown, alphabetical. */
+export function getCategoryOptions() {
+  return db.category.findMany({
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
+}
+
+export type CategoryOption = { id: string; name: string };
+
 /** Categories surfaced as top-level nav items, in display order. */
 const NAV_CATEGORY_SLUGS: readonly string[] = [
   "programming",

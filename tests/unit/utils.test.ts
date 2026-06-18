@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { cn, getInitials } from "@/lib/utils";
+import { cn, getInitials, slugify } from "@/lib/utils";
 
 // Trivial test to verify the Vitest setup runs and the `@/` alias resolves.
 describe("cn (class name merge util)", () => {
@@ -34,5 +34,19 @@ describe("getInitials", () => {
     expect(getInitials(null)).toBe("U");
     expect(getInitials("")).toBe("U");
     expect(getInitials(undefined, "X")).toBe("X");
+  });
+});
+
+describe("slugify", () => {
+  it("lowercases and hyphenates words", () => {
+    expect(slugify("Belajar Next.js Dasar")).toBe("belajar-nextjs-dasar");
+  });
+
+  it("strips special characters and collapses separators", () => {
+    expect(slugify("  Hello,   World!!  ")).toBe("hello-world");
+  });
+
+  it("trims leading/trailing hyphens", () => {
+    expect(slugify("--React & Redux--")).toBe("react-redux");
   });
 });

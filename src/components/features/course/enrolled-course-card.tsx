@@ -17,14 +17,15 @@ import type { EnrolledCourse } from "@/server/services/enrollment";
 export function EnrolledCourseCard({
   enrollment,
   progress,
+  resumeLectureId,
 }: {
   enrollment: EnrolledCourse;
   progress: { completed: number; total: number; percentage: number };
+  resumeLectureId: string | null;
 }) {
   const { course } = enrollment;
-  const firstLectureId = course.sections[0]?.lectures[0]?.id ?? null;
-  const continueHref = firstLectureId
-    ? `/learn/${course.id}/${firstLectureId}`
+  const continueHref = resumeLectureId
+    ? `/learn/${course.id}/${resumeLectureId}`
     : `/courses/${course.slug}`;
   const isCompleted = progress.total > 0 && progress.percentage === 100;
 

@@ -117,6 +117,35 @@ export async function markLectureComplete(userId: string, lectureId: string) {
 }
 
 /**
+ * The lecture "Continue Learning" should land on: the first INCOMPLETE lecture
+ * in curriculum order (section.order, then lecture.order). When every lecture
+ * is already complete it falls back to the very first lecture (so the link
+ * still works for review). Returns null only when the course has no lectures.
+ */
+export async function getResumeLecture(
+  userId: string,
+  courseId: string,
+): Promise<string | null> {
+  const [lectures, completed] = await Promise.all([
+    db.lecture.findMany({
+      where: { section: { courseId } },
+      orderBy: [{ section: { order: "asc" } }, { order: "asc" }],
+      select: { id: true },
+    }),
+    db.lectureProgress.findMany({
+      where: { userId, isCompleted: true, lecture: { section: { courseId } } },
+      select: { lectureId: true },
+    }),
+  ]);
+
+  if (lectures.length === 0) return null;
+
+  const completedIds = new Set(completed.map((p) => p.lectureId));
+  const next = lectures.find((lecture) => !completedIds.has(lecture.id));
+  return (next ?? lectures[0]).id;
+}
+
+/**
  * Course progress for a learner. Every lecture type counts toward the total:
  * VIDEO completes at ≥90% watched, READING via "Tandai Selesai", and QUIZ by
  * passing the quiz — so 100% means every item in the curriculum is done.

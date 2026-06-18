@@ -21,6 +21,11 @@ const STUDENTS = [
   { id: "user_student_2", email: "student2@example.com", name: "Sari Belajar" },
 ];
 
+// Role management has no UI (out of scope) — the admin account is seeded.
+const ADMINS = [
+  { id: "user_admin", email: "admin@example.com", name: "Platform Admin" },
+];
+
 // student@example.com keeps a couple of "legacy" enrollments (1 free, 1 paid).
 const LEGACY_ENROLLMENTS = [
   { id: "enr_legacy_free", courseId: "course_nextjs_pemula" },
@@ -77,6 +82,21 @@ async function main() {
       where: { id: student.id },
       update: data,
       create: { id: student.id, ...data },
+    });
+  }
+
+  for (const admin of ADMINS) {
+    const data = {
+      name: admin.name,
+      email: admin.email,
+      role: UserRole.ADMIN,
+      image: avatar(admin.email),
+      password: passwordHash,
+    };
+    await db.user.upsert({
+      where: { id: admin.id },
+      update: data,
+      create: { id: admin.id, ...data },
     });
   }
 

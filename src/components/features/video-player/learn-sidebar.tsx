@@ -25,6 +25,48 @@ const LECTURE_ICON: Record<LectureType, typeof PlayCircle> = {
   QUIZ: HelpCircle,
 };
 
+function LectureLink({
+  lecture,
+  courseId,
+  active,
+  isDone,
+}: {
+  lecture: Lecture;
+  courseId: string;
+  active: boolean;
+  isDone: boolean;
+}) {
+  const Icon = LECTURE_ICON[lecture.type];
+  return (
+    <li>
+      <Link
+        href={`/learn/${courseId}/${lecture.id}`}
+        aria-current={active ? "page" : undefined}
+        data-testid="sidebar-lecture"
+        data-active={active}
+        data-completed={isDone}
+        className={cn(
+          "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
+          active
+            ? "bg-accent font-medium text-foreground"
+            : "text-muted-foreground hover:bg-accent hover:text-foreground",
+        )}
+      >
+        {isDone ? (
+          <CheckCircle2
+            className="h-4 w-4 shrink-0 text-green-600"
+            data-testid="lecture-complete-check"
+            aria-label="Selesai"
+          />
+        ) : (
+          <Icon className="h-4 w-4 shrink-0" />
+        )}
+        <span className="flex-1">{lecture.title}</span>
+      </Link>
+    </li>
+  );
+}
+
 export function LearnSidebar({
   courseId,
   courseSlug,
@@ -46,6 +88,9 @@ export function LearnSidebar({
   const activeSection = sections.find((section) =>
     section.lectures.some((lecture) => lecture.id === currentLectureId),
   );
+  // Single (default) section → flat list, no "Main" header. Multi-section seed
+  // courses keep the per-section accordion.
+  const isFlat = sections.length <= 1;
 
   return (
     <div className="space-y-4" data-testid="learn-sidebar">
@@ -68,64 +113,57 @@ export function LearnSidebar({
         percentage={progress.percentage}
       />
 
-      <Accordion
-        type="multiple"
-        defaultValue={
-          activeSection
-            ? [activeSection.id]
-            : sections.map((section) => section.id)
-        }
-        className="rounded-lg border border-border px-3"
-      >
-        {sections.map((section) => (
-          <AccordionItem
-            key={section.id}
-            value={section.id}
-            data-testid="sidebar-section"
-          >
-            <AccordionTrigger className="text-left text-sm">
-              {section.title}
-            </AccordionTrigger>
-            <AccordionContent>
-              <ul className="space-y-1">
-                {section.lectures.map((lecture) => {
-                  const active = lecture.id === currentLectureId;
-                  const isDone = completed.has(lecture.id);
-                  const Icon = LECTURE_ICON[lecture.type];
-                  return (
-                    <li key={lecture.id}>
-                      <Link
-                        href={`/learn/${courseId}/${lecture.id}`}
-                        aria-current={active ? "page" : undefined}
-                        data-testid="sidebar-lecture"
-                        data-active={active}
-                        data-completed={isDone}
-                        className={cn(
-                          "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
-                          active
-                            ? "bg-accent font-medium text-foreground"
-                            : "text-muted-foreground hover:bg-accent hover:text-foreground",
-                        )}
-                      >
-                        {isDone ? (
-                          <CheckCircle2
-                            className="h-4 w-4 shrink-0 text-green-600"
-                            data-testid="lecture-complete-check"
-                            aria-label="Selesai"
-                          />
-                        ) : (
-                          <Icon className="h-4 w-4 shrink-0" />
-                        )}
-                        <span className="flex-1">{lecture.title}</span>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </AccordionContent>
-          </AccordionItem>
-        ))}
-      </Accordion>
+      {isFlat ? (
+        <ul
+          className="space-y-1 rounded-lg border border-border p-2"
+          data-testid="lecture-list"
+        >
+          {(sections[0]?.lectures ?? []).map((lecture) => (
+            <LectureLink
+              key={lecture.id}
+              lecture={lecture}
+              courseId={courseId}
+              active={lecture.id === currentLectureId}
+              isDone={completed.has(lecture.id)}
+            />
+          ))}
+        </ul>
+      ) : (
+        <Accordion
+          type="multiple"
+          defaultValue={
+            activeSection
+              ? [activeSection.id]
+              : sections.map((section) => section.id)
+          }
+          className="rounded-lg border border-border px-3"
+        >
+          {sections.map((section) => (
+            <AccordionItem
+              key={section.id}
+              value={section.id}
+              data-testid="sidebar-section"
+            >
+              <AccordionTrigger className="text-left text-sm">
+                {section.title}
+              </AccordionTrigger>
+              <AccordionContent>
+                <ul className="space-y-1">
+                  {section.lectures.map((lecture) => (
+                    <LectureLink
+                      key={lecture.id}
+                      lecture={lecture}
+                      courseId={courseId}
+                      active={lecture.id === currentLectureId}
+                      isDone={completed.has(lecture.id)}
+                    />
+                  ))}
+                </ul>
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+      )}
 
       <CertificateSection
         courseId={courseId}
