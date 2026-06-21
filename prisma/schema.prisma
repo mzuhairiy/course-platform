@@ -41,6 +41,7 @@ model User {
   quizAttempts    QuizAttempt[]
   transactions    Transaction[]
   certificates    Certificate[]
+  reviews         Review[]
   authoredCourses Course[]          @relation("CourseInstructor")
 }
 
@@ -130,6 +131,24 @@ model Course {
   enrollments  Enrollment[]
   transactions Transaction[]
   certificates Certificate[]
+  reviews      Review[]
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  userId    String
+  courseId  String
+  rating    Int // 1..5 stars
+  comment   String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  // One review per user per course (upsert on re-submit).
+  @@unique([userId, courseId])
+  @@index([courseId])
 }
 
 model Section {
@@ -159,9 +178,9 @@ model Lecture {
   order           Int
   durationSeconds Int? // untuk video
   contentMd       String?     @db.Text // untuk reading
-  videoUrl        String? // direct video URL (Fase 1 / external)
-  videoAssetId    String? // Mux asset ID
-  videoPlaybackId String? // Mux playback ID
+  videoUrl        String? // direct video URL (mp4 / YouTube embed) — the only video field used
+  videoAssetId    String? // unused — Mux di-drop; kept nullable for future use
+  videoPlaybackId String? // unused — Mux di-drop; kept nullable for future use
   createdAt       DateTime    @default(now())
 
   section  Section           @relation(fields: [sectionId], references: [id], onDelete: Cascade)

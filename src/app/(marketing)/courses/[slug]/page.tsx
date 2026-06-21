@@ -16,6 +16,7 @@ import { getInitials } from "@/lib/utils";
 import { getCurrentUser } from "@/lib/auth";
 import {
   getCourseDetailBySlug,
+  getRelatedCourses,
   type CourseDetail,
 } from "@/server/services/course";
 import { findEnrollment } from "@/server/services/enrollment";
@@ -23,6 +24,14 @@ import {
   getCourseProgress,
   getResumeLecture,
 } from "@/server/services/progress";
+import {
+  getCourseRatingSummary,
+  getCourseReviews,
+  getUserReview,
+} from "@/server/services/review";
+import { CourseCard } from "@/components/features/course/course-card";
+import { ReviewsSection } from "@/components/features/review/reviews-section";
+import { StarRating } from "@/components/features/review/star-rating";
 
 type PageProps = { params: { slug: string } };
 
@@ -76,6 +85,15 @@ export default async function CourseDetailPage({ params }: PageProps) {
   );
   const totalDuration = sumDuration(course.sections);
 
+  // Fase 5: reviews + recommendations.
+  const [ratingSummary, reviews, relatedCourses, userReview] =
+    await Promise.all([
+      getCourseRatingSummary(course.id),
+      getCourseReviews(course.id),
+      getRelatedCourses(course.id, course.category?.id ?? null),
+      user && isEnrolled ? getUserReview(user.id, course.id) : null,
+    ]);
+
   return (
     <article data-testid="course-detail">
       <div
@@ -97,6 +115,20 @@ export default async function CourseDetailPage({ params }: PageProps) {
             <Text variant="lead" className="max-w-2xl">
               {course.subtitle}
             </Text>
+          ) : null}
+          {ratingSummary.count > 0 ? (
+            <div
+              className="flex items-center gap-2 pt-1"
+              data-testid="hero-rating"
+            >
+              <StarRating value={ratingSummary.average} />
+              <span className="text-sm font-medium">
+                {ratingSummary.average.toFixed(1)}
+              </span>
+              <Text variant="muted" as="span" className="text-sm">
+                ({ratingSummary.count})
+              </Text>
+            </div>
           ) : null}
           <div className="flex items-center gap-3 pt-2">
             <Avatar className="h-9 w-9">
@@ -234,12 +266,27 @@ export default async function CourseDetailPage({ params }: PageProps) {
               ) : null}
             </section>
 
-            <section className="space-y-3" data-testid="reviews-placeholder">
-              <Heading as="h2" level="h3">
-                Reviews
-              </Heading>
-              <Text variant="muted">Reviews akan tersedia di Fase 5.</Text>
-            </section>
+            <ReviewsSection
+              courseId={course.id}
+              courseSlug={course.slug}
+              summary={ratingSummary}
+              reviews={reviews}
+              canReview={Boolean(user && isEnrolled)}
+              userReview={userReview}
+            />
+
+            {relatedCourses.length > 0 ? (
+              <section className="space-y-3" data-testid="related-courses">
+                <Heading as="h2" level="h3">
+                  Course terkait
+                </Heading>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {relatedCourses.map((related) => (
+                    <CourseCard key={related.id} course={related} />
+                  ))}
+                </div>
+              </section>
+            ) : null}
           </div>
         </div>
       </Container>

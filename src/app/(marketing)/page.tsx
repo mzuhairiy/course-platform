@@ -11,6 +11,7 @@ import { Heading, Text } from "@/components/ui/typography";
 import { siteConfig } from "@/config/site";
 import { getCategoriesWithCourseCount } from "@/server/services/category";
 import { getFeaturedCourses } from "@/server/services/course";
+import { getRatingsForCourseIds } from "@/server/services/review";
 import { getShowcaseInstructors } from "@/server/services/instructor";
 
 const valueProps = [
@@ -37,6 +38,9 @@ export default async function HomePage() {
     getFeaturedCourses(3),
     getShowcaseInstructors(),
   ]);
+  const featuredRatings = await getRatingsForCourseIds(
+    featuredCourses.map((c) => c.id),
+  );
 
   return (
     <>
@@ -88,7 +92,11 @@ export default async function HomePage() {
           {featuredCourses.length > 0 ? (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {featuredCourses.map((course) => (
-                <CourseCard key={course.id} course={course} />
+                <CourseCard
+                  key={course.id}
+                  course={course}
+                  rating={featuredRatings.get(course.id)}
+                />
               ))}
             </div>
           ) : (

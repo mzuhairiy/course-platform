@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { CourseCover } from "@/components/features/course/course-cover";
+import { StarRating } from "@/components/features/review/star-rating";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -12,8 +13,15 @@ import {
 import { Heading, Text } from "@/components/ui/typography";
 import { formatPrice } from "@/lib/format";
 import type { CourseCardData } from "@/server/services/course";
+import type { RatingSummary } from "@/server/services/review";
 
-export function CourseCard({ course }: { course: CourseCardData }) {
+export function CourseCard({
+  course,
+  rating,
+}: {
+  course: CourseCardData;
+  rating?: RatingSummary;
+}) {
   return (
     <Link
       href={`/courses/${course.slug}`}
@@ -47,6 +55,20 @@ export function CourseCard({ course }: { course: CourseCardData }) {
           <Heading as="h3" level="h4" className="line-clamp-2 text-lg">
             {course.title}
           </Heading>
+          {rating && rating.count > 0 ? (
+            <div
+              className="flex items-center gap-1.5"
+              data-testid="card-rating"
+            >
+              <StarRating value={rating.average} size={14} />
+              <span className="text-xs font-medium">
+                {rating.average.toFixed(1)}
+              </span>
+              <Text variant="muted" as="span" className="text-xs">
+                ({rating.count})
+              </Text>
+            </div>
+          ) : null}
         </CardHeader>
         <CardContent className="flex-1">
           <Text variant="muted" className="line-clamp-2">

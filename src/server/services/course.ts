@@ -31,6 +31,28 @@ export function getFeaturedCourses(limit = 3) {
   });
 }
 
+/**
+ * Recommended courses for a course detail page: most-enrolled PUBLISHED courses
+ * in the same category (excluding the current one). Falls back to overall
+ * popular when the course has no category.
+ */
+export function getRelatedCourses(
+  courseId: string,
+  categoryId: string | null,
+  limit = 3,
+) {
+  return db.course.findMany({
+    where: {
+      status: CourseStatus.PUBLISHED,
+      id: { not: courseId },
+      ...(categoryId ? { categoryId } : {}),
+    },
+    include: courseCardInclude,
+    orderBy: { enrollments: { _count: "desc" } },
+    take: limit,
+  });
+}
+
 function sortToOrderBy(sort: SortValue): Prisma.CourseOrderByWithRelationInput {
   switch (sort) {
     case "price-asc":
@@ -138,7 +160,6 @@ const courseLearnSelect = {
           durationSeconds: true,
           contentMd: true,
           videoUrl: true,
-          videoPlaybackId: true,
         },
       },
     },
@@ -411,6 +432,8 @@ export function getCourseEnrollmentTarget(courseId: string) {
     where: { id: courseId },
     select: {
       id: true,
+      title: true,
+      slug: true,
       status: true,
       price: true,
       sections: {

@@ -313,5 +313,27 @@ model Certificate {
 
   @@unique([userId, courseId])
 }
+
+// ==========================================
+// REVIEW (Fase 5 — rating + komentar per course)
+// ==========================================
+// Hanya user yang enrolled boleh review. Satu review per user per course
+// (upsert saat re-submit). User & Course punya back-relation `reviews`.
+
+model Review {
+  id        String   @id @default(cuid())
+  userId    String
+  courseId  String
+  rating    Int // 1..5 stars
+  comment   String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([courseId])
+}
 ```
 

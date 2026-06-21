@@ -1,7 +1,9 @@
 import "server-only";
 
 import { db } from "@/lib/db";
+import { sendCompletionEmail } from "@/lib/email";
 import { COMPLETION_THRESHOLD } from "@/lib/progress";
+import { siteConfig } from "@/config/site";
 
 export type PerLectureProgress = {
   completed: boolean;
@@ -35,10 +37,26 @@ async function syncCourseCompletion(userId: string, courseId: string) {
   const { percentage, total } = await getCourseProgress(userId, courseId);
   if (total === 0 || percentage < 100) return;
 
-  await db.enrollment.updateMany({
+  const { count } = await db.enrollment.updateMany({
     where: { userId, courseId, completedAt: null },
     data: { completedAt: new Date() },
   });
+
+  // Only on the FIRST time completion is stamped (count > 0): send the
+  // completion email. Best-effort — never block completion on email.
+  if (count > 0) {
+    const [user, course] = await Promise.all([
+      db.user.findUnique({ where: { id: userId }, select: { name: true, email: true } }),
+      db.course.findUnique({ where: { id: courseId }, select: { title: true, slug: true } }),
+    ]);
+    if (user?.email && course) {
+      await sendCompletionEmail(user.email, {
+        name: user.name ?? "there",
+        courseTitle: course.title,
+        certificateUrl: `${siteConfig.url}/courses/${course.slug}`,
+      });
+    }
+  }
 }
 
 /**

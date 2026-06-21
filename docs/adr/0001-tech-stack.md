@@ -33,7 +33,7 @@ Key constraints:
 | Auth                              | **Auth.js v5 (NextAuth beta)**                      | De-facto standard for Next.js; multi-provider                                |
 | Styling                           | **Tailwind CSS v3 + shadcn/ui** (`default`/`slate`) | Utility-first; copy-in components we fully own                               |
 | Forms                             | **React Hook Form + Zod**                           | Type-safe validation; schema shared client + server                          |
-| Payment / Video / Storage / Email | Midtrans / Mux / Cloudflare R2 / Resend             | Wired in later phases                                                        |
+| Payment / Video / Storage / Email | Midtrans / ~~Mux~~ URL input / Cloudflare R2 / Resend | Wired in later phases. Mux di-drop (Fase 4): video pakai URL input (mp4/YouTube), tanpa upload/transcoding. |
 | Testing (this repo)               | **Vitest**                                          | Fast white-box unit/component tests next to the code                         |
 
 ### Deviations decided during the build

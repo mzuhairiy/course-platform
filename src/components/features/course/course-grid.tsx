@@ -2,8 +2,9 @@ import { CourseCard } from "@/components/features/course/course-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/typography";
 import type { CourseCardData } from "@/server/services/course";
+import { getRatingsForCourseIds } from "@/server/services/review";
 
-export function CourseGrid({ courses }: { courses: CourseCardData[] }) {
+export async function CourseGrid({ courses }: { courses: CourseCardData[] }) {
   if (courses.length === 0) {
     return (
       <div
@@ -17,13 +18,19 @@ export function CourseGrid({ courses }: { courses: CourseCardData[] }) {
     );
   }
 
+  const ratings = await getRatingsForCourseIds(courses.map((c) => c.id));
+
   return (
     <div
       className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
       data-testid="course-grid"
     >
       {courses.map((course) => (
-        <CourseCard key={course.id} course={course} />
+        <CourseCard
+          key={course.id}
+          course={course}
+          rating={ratings.get(course.id)}
+        />
       ))}
     </div>
   );

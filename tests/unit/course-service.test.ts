@@ -1,19 +1,26 @@
 import { CourseStatus, UserRole } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { courseCreate, courseFindUnique, courseUpdate, courseDelete } =
-  vi.hoisted(() => ({
-    courseCreate: vi.fn(),
-    courseFindUnique: vi.fn(),
-    courseUpdate: vi.fn(),
-    courseDelete: vi.fn(),
-  }));
+const {
+  courseCreate,
+  courseFindUnique,
+  courseFindMany,
+  courseUpdate,
+  courseDelete,
+} = vi.hoisted(() => ({
+  courseCreate: vi.fn(),
+  courseFindUnique: vi.fn(),
+  courseFindMany: vi.fn(),
+  courseUpdate: vi.fn(),
+  courseDelete: vi.fn(),
+}));
 
 vi.mock("@/lib/db", () => ({
   db: {
     course: {
       create: courseCreate,
       findUnique: courseFindUnique,
+      findMany: courseFindMany,
       update: courseUpdate,
       delete: courseDelete,
     },
@@ -37,6 +44,7 @@ import {
   CourseHasEnrollmentsError,
   createCourse,
   deleteCourse,
+  getRelatedCourses,
   publishCourse,
   updateCourse,
   type CourseActor,
@@ -163,5 +171,27 @@ describe("ownership", () => {
     await updateCourse("course_1", formInput, adminActor);
 
     expect(courseUpdate).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("getRelatedCourses", () => {
+  it("queries published same-category courses excluding the current one", async () => {
+    courseFindMany.mockResolvedValue([]);
+
+    await getRelatedCourses("course_1", "cat_1", 3);
+
+    const args = courseFindMany.mock.calls[0][0];
+    expect(args.where.status).toBe(CourseStatus.PUBLISHED);
+    expect(args.where.id).toEqual({ not: "course_1" });
+    expect(args.where.categoryId).toBe("cat_1");
+    expect(args.take).toBe(3);
+  });
+
+  it("omits the category filter when the course has none", async () => {
+    courseFindMany.mockResolvedValue([]);
+
+    await getRelatedCourses("course_1", null);
+
+    expect(courseFindMany.mock.calls[0][0].where.categoryId).toBeUndefined();
   });
 });

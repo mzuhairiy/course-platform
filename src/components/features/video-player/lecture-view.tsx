@@ -11,7 +11,7 @@ import type { PerLectureProgress } from "@/server/services/progress";
 import type { LearnLecture } from "@/server/services/course";
 
 // Fallback if a VIDEO lecture somehow has no URL (all seeded lectures use the
-// local sample clip). Mux playback (videoPlaybackId) lands in Fase 4.
+// local sample clip). Video is plain URL input — Mux was dropped.
 const SAMPLE_VIDEO_URL = "/sample-lecture.mp4";
 
 export function LectureView({
