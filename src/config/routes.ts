@@ -23,6 +23,7 @@ export const PROTECTED_PREFIXES = [
   "/dashboard",
   "/my-courses",
   "/purchase-history",
+  "/checkout",
   "/settings",
   "/learn",
   "/instructor",

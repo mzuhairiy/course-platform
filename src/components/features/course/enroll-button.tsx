@@ -80,20 +80,10 @@ export function EnrollButton({
     );
   }
 
-  // Paid course, not enrolled — checkout arrives in Fase 2.
+  // Paid course, not enrolled → go to checkout.
   return (
-    <div className="space-y-2">
-      <Button
-        size="lg"
-        className="w-full"
-        data-testid="enroll-button"
-        onClick={() => setError("Checkout akan tersedia di Fase 2.")}
-      >
-        Buy for {formatPrice(price)}
-      </Button>
-      <p className="text-sm text-muted-foreground" data-testid="enroll-note">
-        {error ?? "Pembayaran tersedia di Fase 2."}
-      </p>
-    </div>
+    <Button asChild size="lg" className="w-full" data-testid="enroll-button">
+      <Link href={`/checkout/${courseId}`}>Buy for {formatPrice(price)}</Link>
+    </Button>
   );
 }

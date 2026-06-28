@@ -83,6 +83,7 @@ export const config = {
     "/dashboard/:path*",
     "/my-courses/:path*",
     "/purchase-history/:path*",
+    "/checkout/:path*",
     "/settings/:path*",
     "/learn/:path*",
     "/instructor/:path*",

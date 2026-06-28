@@ -53,12 +53,12 @@ Tooling dan workflow mimic startup (CI/CD cepat, feature flag, observability), t
 | `docs/plan/phase-1-mvp.md` | Fase 1 — MVP (auth, browse, free enroll, video, dashboard) · Prompt 1–10 | ✅ DONE |
 | `docs/plan/phase-1b-content.md` | Fase 1B — Content seeding · Prompt 16 | ✅ DONE |
 | `docs/plan/ad-hoc-features.md` | Search, theme navy, konten+carousel, profile, course cover · Prompt A–E | ✅ DONE |
-| `docs/plan/phase-3-learning.md` | Fase 3 — Progress + Certificate + Quiz · Prompt F, G, H | 🚧 ACTIVE |
-| `docs/plan/phase-2-checkout.md` | Fase 2 — Checkout & Midtrans · Prompt 11–15 | ⏳ TODO (ditunda) |
-| `docs/plan/phase-4-instructor.md` | Fase 4 — Instructor + Admin + RBAC · Prompt J, K, L, M, N | ⏳ TODO |
-| `docs/plan/phase-5-polish.md` | Fase 5 — Review, notification, recommendation, SEO | 📋 FUTURE (stub) |
+| `docs/plan/phase-3-learning.md` | Fase 3 — Progress + Certificate + Quiz · Prompt F, G, H, I | ✅ DONE |
+| `docs/plan/phase-2-checkout.md` | Fase 2 — Checkout & Midtrans · Prompt 11–15 | 🚧 SKELETON (UI + API scaffold; integrasi Midtrans nyata belum) |
+| `docs/plan/phase-4-instructor.md` | Fase 4 — Instructor + Admin + RBAC · Prompt J, K, L, M, N | ✅ DONE |
+| `docs/plan/phase-5-polish.md` | Fase 5 — Review, notification, recommendation · (search via ad-hoc) | ✅ DONE |
 
-> **Urutan eksekusi aktual** beda dari nomor fase: 1 → 1B → ad-hoc → 3 (sekarang) → 2 → 4 → 5.
+> **Urutan eksekusi aktual** beda dari nomor fase: 1 → 1B → ad-hoc → 3 → 4 → 5 → 2 (sekarang, skeleton).
 > Nomor fase dipertahankan sesuai roadmap awal; status label di atas yang jadi acuan progress.
 
 ---

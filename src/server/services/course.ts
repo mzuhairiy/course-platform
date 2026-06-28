@@ -418,6 +418,23 @@ export function getCourseForEdit(courseId: string) {
   });
 }
 
+/** Course summary for the checkout/order page (by id). */
+export function getCheckoutCourse(courseId: string) {
+  return db.course.findUnique({
+    where: { id: courseId },
+    select: {
+      id: true,
+      slug: true,
+      title: true,
+      price: true,
+      status: true,
+      thumbnailUrl: true,
+      coverLabel: true,
+      instructor: { select: { name: true } },
+    },
+  });
+}
+
 /** Just enough to gate a course sub-page (ownership) and render its header. */
 export function getCourseOwnerMeta(courseId: string) {
   return db.course.findUnique({

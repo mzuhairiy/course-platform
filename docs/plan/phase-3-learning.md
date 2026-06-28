@@ -1,6 +1,6 @@
 # Fase 3 — Learning Experience (Progress + Certificate + Quiz)
 
-**Status: 🚧 ACTIVE** · Prompt F, G, H, I
+**Status: ✅ DONE** · Prompt F, G, H, I
 
 > Menutup learning loop: video/reading → progress tracking → quiz → course completion → certificate → verifikasi publik.
 > Tidak ada perubahan schema — `LectureProgress`, `Enrollment.completedAt`, `Quiz`, `QuizQuestion`, `QuizAttempt`, `Certificate` semua sudah ada di `docs/reference/schema.md`.
