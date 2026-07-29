@@ -55,8 +55,17 @@ export default async function PurchaseHistoryPage() {
                       {tx.course.title}
                     </Link>
                     <Text variant="muted" as="p" className="text-xs">
-                      {formatDate(tx.paidAt ?? tx.createdAt)}
+                      {formatDate(tx.paidAt ?? tx.createdAt)} · {tx.orderId}
                     </Text>
+                    {tx.status === "PENDING" ? (
+                      <Link
+                        href={`/checkout/status?order_id=${tx.orderId}`}
+                        className="text-xs font-medium text-primary hover:underline"
+                        data-testid="continue-payment-link"
+                      >
+                        Lanjutkan pembayaran
+                      </Link>
+                    ) : null}
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1">
                     <span className="font-semibold">

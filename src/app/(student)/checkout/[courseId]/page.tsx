@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound, redirect } from "next/navigation";
 
-import { CheckoutButton } from "@/components/features/checkout/checkout-button";
+import { CheckoutForm } from "@/components/features/checkout/checkout-form";
 import { CourseCover } from "@/components/features/course/course-cover";
 import { Container } from "@/components/shared/container";
 import { Section } from "@/components/shared/section";
@@ -29,10 +29,10 @@ export default async function CheckoutPage({ params }: PageProps) {
   const course = await getCheckoutCourse(params.courseId);
   if (!course || course.status !== CourseStatus.PUBLISHED) notFound();
 
-  // Free course → use the normal enroll flow; already enrolled → go learn.
+  // Free course → use the normal enroll flow; already enrolled → nothing to buy.
   if (course.price <= 0) redirect(`/courses/${course.slug}`);
   if (await findEnrollment(user.id, course.id)) {
-    redirect(`/learn/${course.id}`);
+    redirect(`/courses/${course.slug}`);
   }
 
   return (
@@ -83,7 +83,7 @@ export default async function CheckoutPage({ params }: PageProps) {
               <span>Total</span>
               <span data-testid="order-total">{formatPrice(course.price)}</span>
             </div>
-            <CheckoutButton courseId={course.id} />
+            <CheckoutForm courseId={course.id} />
           </CardContent>
         </Card>
       </Container>

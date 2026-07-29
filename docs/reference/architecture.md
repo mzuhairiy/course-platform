@@ -16,7 +16,7 @@
 | Forms | React Hook Form + Zod | Type-safe validation, shared schema client+server |
 | File Storage | Cloudflare R2 | S3-compatible, no egress fee |
 | Video | URL input (mp4 / YouTube embed) | Instructor paste link, tidak ada upload/transcoding. Mux di-drop. |
-| Payment | Midtrans (Snap) | Lokal Indonesia, support QRIS/VA/CC |
+| Payment | Dummy checkout (no gateway) | Midtrans di-drop — disimulasikan di server, transaksi tetap tercatat di DB |
 | Email | Resend | Modern API, React Email template |
 | Deployment | Vercel | Optimal untuk Next.js |
 | DB Hosting | Neon atau Supabase (Postgres) | Serverless Postgres, free tier oke |
@@ -27,7 +27,7 @@
 
 - **App Router** dengan Server Components default, Client Components hanya saat butuh interactivity
 - **Server Actions** untuk mutation (form submit, dll)
-- **Route Handlers (`/api/`)** untuk webhook (Midtrans notification)
+- **Route Handlers (`/api/`)** hanya untuk yang bukan mutation form: Auth.js, download sertifikat
 - **Feature-based folder organization** (bukan type-based)
 
 ### Environment Strategy
@@ -98,9 +98,9 @@ course-platform/
 │   │   │   └── learn/[courseId]/[lectureId]/
 │   │   ├── (instructor)/    # Instructor area (Fase 4)
 │   │   ├── (admin)/         # Admin area (Fase 4)
-│   │   ├── api/             # Route handlers (webhooks only)
+│   │   ├── api/             # Route handlers (non-mutation only)
 │   │   │   ├── auth/[...nextauth]/
-│   │   │   └── webhooks/midtrans/
+│   │   │   └── certificates/[courseId]/
 │   │   ├── layout.tsx
 │   │   └── page.tsx
 │   ├── components/
@@ -114,7 +114,6 @@ course-platform/
 │   ├── lib/
 │   │   ├── db.ts            # Prisma client
 │   │   ├── auth.ts          # Auth.js config
-│   │   ├── midtrans.ts      # Midtrans client
 │   │   └── utils.ts
 │   ├── server/              # Server-only logic
 │   │   ├── actions/         # Server Actions

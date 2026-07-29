@@ -1,10 +1,8 @@
-import { createHash } from "node:crypto";
-
 import { TransactionStatus } from "@prisma/client";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { txFindUnique, txUpdate, enrUpsert, dollarTx } = vi.hoisted(() => ({
-  txFindUnique: vi.fn(),
+const { txFindFirst, txUpdate, enrUpsert, dollarTx } = vi.hoisted(() => ({
+  txFindFirst: vi.fn(),
   txUpdate: vi.fn(),
   enrUpsert: vi.fn(),
   dollarTx: vi.fn(),
@@ -12,73 +10,32 @@ const { txFindUnique, txUpdate, enrUpsert, dollarTx } = vi.hoisted(() => ({
 
 vi.mock("@/lib/db", () => ({
   db: {
-    transaction: { findUnique: txFindUnique, update: txUpdate },
+    transaction: { findFirst: txFindFirst, update: txUpdate },
     enrollment: { upsert: enrUpsert },
     $transaction: dollarTx,
   },
 }));
 
-import { verifySignature } from "@/lib/midtrans";
+import { paymentSimulationSchema } from "@/schemas/checkout";
 import {
+  applyPaymentOutcome,
   generateOrderId,
-  processPaymentNotification,
-  type MidtransNotification,
 } from "@/server/services/transaction";
-
-const SERVER_KEY = "SB-Mid-server-TESTKEY";
-
-function sign(orderId: string, statusCode: string, grossAmount: string): string {
-  return createHash("sha512")
-    .update(`${orderId}${statusCode}${grossAmount}${SERVER_KEY}`)
-    .digest("hex");
-}
-
-function notification(over: Partial<MidtransNotification> = {}): MidtransNotification {
-  const base = {
-    order_id: "ORD-1",
-    status_code: "200",
-    gross_amount: "150000.00",
-    transaction_status: "settlement",
-    payment_type: "bank_transfer",
-  };
-  const merged = { ...base, ...over };
-  return {
-    ...merged,
-    signature_key:
-      over.signature_key ??
-      sign(merged.order_id, merged.status_code, merged.gross_amount),
-  };
-}
-
-beforeAll(() => {
-  process.env.MIDTRANS_SERVER_KEY = SERVER_KEY;
-});
-
-beforeEach(() => {
-  vi.clearAllMocks();
-  dollarTx.mockResolvedValue([]);
-  txUpdate.mockResolvedValue({});
-  enrUpsert.mockResolvedValue({});
-});
 
 const pendingTxn = {
   orderId: "ORD-1",
   userId: "user_1",
   courseId: "course_1",
   amount: 150000,
+  paymentMethod: "bank_transfer",
   status: TransactionStatus.PENDING,
 };
 
-describe("verifySignature", () => {
-  it("accepts a correct signature", () => {
-    expect(verifySignature("ORD-1", "200", "150000.00", sign("ORD-1", "200", "150000.00"))).toBe(true);
-  });
-
-  it("rejects a tampered signature / amount", () => {
-    const good = sign("ORD-1", "200", "150000.00");
-    expect(verifySignature("ORD-1", "200", "999999.00", good)).toBe(false);
-    expect(verifySignature("ORD-1", "200", "150000.00", "deadbeef")).toBe(false);
-  });
+beforeEach(() => {
+  vi.clearAllMocks();
+  dollarTx.mockResolvedValue([]);
+  txUpdate.mockResolvedValue({});
+  enrUpsert.mockResolvedValue({});
 });
 
 describe("generateOrderId", () => {
@@ -88,64 +45,102 @@ describe("generateOrderId", () => {
     expect(a).toMatch(/^ORD-[A-Z0-9]+-[A-Z0-9]{6}$/);
     expect(a).not.toBe(b);
   });
+
+  it("produces ids the simulation schema accepts", () => {
+    const parsed = paymentSimulationSchema.safeParse({
+      orderId: generateOrderId(),
+      outcome: "success",
+    });
+    expect(parsed.success).toBe(true);
+  });
 });
 
-describe("processPaymentNotification", () => {
-  it("settles + enrolls on settlement", async () => {
-    txFindUnique.mockResolvedValue(pendingTxn);
+describe("paymentSimulationSchema", () => {
+  it("rejects a malformed order id and an unknown outcome", () => {
+    expect(
+      paymentSimulationSchema.safeParse({ orderId: "nope", outcome: "success" })
+        .success,
+    ).toBe(false);
+    expect(
+      paymentSimulationSchema.safeParse({
+        orderId: "ORD-ABC-123456",
+        outcome: "refund",
+      }).success,
+    ).toBe(false);
+  });
+});
 
-    const result = await processPaymentNotification(notification());
+describe("applyPaymentOutcome", () => {
+  it("settles + enrolls atomically on success", async () => {
+    txFindFirst.mockResolvedValue(pendingTxn);
 
-    expect(result).toMatchObject({ ok: true, status: 200 });
+    const result = await applyPaymentOutcome("user_1", "ORD-1", "success");
+
+    expect(result).toMatchObject({
+      ok: true,
+      status: TransactionStatus.SUCCESS,
+      courseId: "course_1",
+    });
+    // One DB transaction wrapping BOTH the status update and the enrollment.
     expect(dollarTx).toHaveBeenCalledTimes(1);
     expect(txUpdate.mock.calls[0][0].data.status).toBe(TransactionStatus.SUCCESS);
+    expect(txUpdate.mock.calls[0][0].data.paidAt).toBeInstanceOf(Date);
     expect(enrUpsert.mock.calls[0][0].create).toEqual({
       userId: "user_1",
       courseId: "course_1",
     });
   });
 
-  it("is idempotent once SUCCESS (later notice is a no-op)", async () => {
-    txFindUnique.mockResolvedValue({
+  it("cancels without enrolling", async () => {
+    txFindFirst.mockResolvedValue(pendingTxn);
+
+    const result = await applyPaymentOutcome("user_1", "ORD-1", "cancel");
+
+    expect(result).toMatchObject({ ok: true, status: TransactionStatus.CANCELLED });
+    expect(txUpdate.mock.calls[0][0].data.status).toBe(
+      TransactionStatus.CANCELLED,
+    );
+    expect(dollarTx).not.toHaveBeenCalled();
+    expect(enrUpsert).not.toHaveBeenCalled();
+  });
+
+  it("is idempotent once SUCCESS (second settle is a no-op)", async () => {
+    txFindFirst.mockResolvedValue({
       ...pendingTxn,
       status: TransactionStatus.SUCCESS,
     });
 
-    const result = await processPaymentNotification(
-      notification({ transaction_status: "expire", status_code: "407" }),
-    );
+    const result = await applyPaymentOutcome("user_1", "ORD-1", "success");
 
-    expect(result).toMatchObject({ ok: true, status: 200 });
+    expect(result).toMatchObject({ ok: true, status: TransactionStatus.SUCCESS });
     expect(dollarTx).not.toHaveBeenCalled();
     expect(txUpdate).not.toHaveBeenCalled();
   });
 
-  it("rejects an invalid signature (403)", async () => {
-    const result = await processPaymentNotification(
-      notification({ signature_key: "forged" }),
-    );
+  it("refuses to reopen a transaction that is no longer PENDING", async () => {
+    txFindFirst.mockResolvedValue({
+      ...pendingTxn,
+      status: TransactionStatus.CANCELLED,
+    });
 
-    expect(result.status).toBe(403);
-    expect(txFindUnique).not.toHaveBeenCalled();
-  });
+    const result = await applyPaymentOutcome("user_1", "ORD-1", "success");
 
-  it("rejects a mismatched amount (400, no status change)", async () => {
-    txFindUnique.mockResolvedValue(pendingTxn);
-
-    const result = await processPaymentNotification(
-      notification({ gross_amount: "200000.00" }),
-    );
-
-    expect(result.status).toBe(400);
+    expect(result.ok).toBe(false);
     expect(dollarTx).not.toHaveBeenCalled();
     expect(txUpdate).not.toHaveBeenCalled();
   });
 
-  it("returns 404 when the order is unknown", async () => {
-    txFindUnique.mockResolvedValue(null);
+  it("is scoped to the owner — another user's order is not found", async () => {
+    txFindFirst.mockResolvedValue(null);
 
-    const result = await processPaymentNotification(notification());
+    const result = await applyPaymentOutcome("intruder", "ORD-1", "success");
 
-    expect(result.status).toBe(404);
+    expect(result.ok).toBe(false);
+    expect(txFindFirst.mock.calls[0][0].where).toEqual({
+      orderId: "ORD-1",
+      userId: "intruder",
+    });
+    expect(dollarTx).not.toHaveBeenCalled();
+    expect(txUpdate).not.toHaveBeenCalled();
   });
 });

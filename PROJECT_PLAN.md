@@ -54,11 +54,11 @@ Tooling dan workflow mimic startup (CI/CD cepat, feature flag, observability), t
 | `docs/plan/phase-1b-content.md` | Fase 1B — Content seeding · Prompt 16 | ✅ DONE |
 | `docs/plan/ad-hoc-features.md` | Search, theme navy, konten+carousel, profile, course cover · Prompt A–E | ✅ DONE |
 | `docs/plan/phase-3-learning.md` | Fase 3 — Progress + Certificate + Quiz · Prompt F, G, H, I | ✅ DONE |
-| `docs/plan/phase-2-checkout.md` | Fase 2 — Checkout & Midtrans · Prompt 11–15 | 🚧 SKELETON (UI + API scaffold; integrasi Midtrans nyata belum) |
+| `docs/plan/phase-2-checkout.md` | Fase 2 — Checkout (dummy payment) · Prompt 11–15 | ✅ DONE |
 | `docs/plan/phase-4-instructor.md` | Fase 4 — Instructor + Admin + RBAC · Prompt J, K, L, M, N | ✅ DONE |
 | `docs/plan/phase-5-polish.md` | Fase 5 — Review, notification, recommendation · (search via ad-hoc) | ✅ DONE |
 
-> **Urutan eksekusi aktual** beda dari nomor fase: 1 → 1B → ad-hoc → 3 → 4 → 5 → 2 (sekarang, skeleton).
+> **Urutan eksekusi aktual** beda dari nomor fase: 1 → 1B → ad-hoc → 3 → 4 → 5 → 2.
 > Nomor fase dipertahankan sesuai roadmap awal; status label di atas yang jadi acuan progress.
 
 ---
@@ -78,16 +78,17 @@ Tooling dan workflow mimic startup (CI/CD cepat, feature flag, observability), t
 
 **Definition of Done:** User bisa register → browse → enroll free course → watch video. End-to-end works.
 
-### Fase 2 — Monetization (Checkout + Payment)
+### Fase 2 — Monetization (Checkout + Dummy Payment)
 
-- Midtrans Snap integration
-- Checkout page
-- Order management
-- Webhook handling (payment notification)
+- Checkout page + pilihan metode pembayaran (dummy)
+- Order management (transaksi tercatat di DB)
+- Payment simulator (settle / cancel) menggantikan payment gateway
 - Transaction history
 - Paid enrollment flow
 
-**Definition of Done:** User bisa beli course pake Midtrans (sandbox), payment success → otomatis enrolled.
+**Definition of Done:** User bisa "beli" course lewat checkout simulasi, transaksi masuk DB, payment success → otomatis enrolled.
+
+> **Keputusan:** payment gateway (Midtrans) di-drop — effort integrasi + maintenance sandbox nggak sebanding nilainya buat portfolio QA. Checkout disimulasikan penuh di server; yang di-test tetap sama (state transition, idempotensi, ownership, auto-enroll).
 
 ### Fase 3 — Learning Experience (Progress + Quiz + Certificate)
 

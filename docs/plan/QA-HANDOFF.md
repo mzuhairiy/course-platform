@@ -22,11 +22,12 @@
 | UI | Tailwind v3 + shadcn/ui (navy + putih) |
 | Deploy target | Vercel (belum di-deploy/di-verifikasi di sini) |
 | Personas | STUDENT · INSTRUCTOR · ADMIN (3 shell terpisah) |
-| Test (repo ini) | Vitest white-box: **151 test / 23 file**, semua hijau |
+| Test (repo ini) | Vitest white-box: **159 test / 24 file**, semua hijau |
 | E2E / API / performance | **TIDAK di repo ini** — lihat [§3 Strategi repo](#3-strategi-repo-penting-untuk-qa) |
 
 **3 fitur showcase** (paling dalam untuk di-test): **Checkout & Payment**, **Video Player & Progress**,
-**Quiz Engine**. ⚠️ Checkout & Payment **belum diimplementasi** (Fase 2 ditunda) — lihat [§6](#6-status-fitur--apa-yang-bisa-di-test).
+**Quiz Engine**. ⚠️ Checkout **tanpa payment gateway** — pembayarannya disimulasikan di app, tapi flow-nya
+end-to-end dan transaksinya tercatat di DB. Lihat [§6](#6-status-fitur--apa-yang-bisa-di-test).
 
 ---
 
@@ -58,7 +59,7 @@ npm run build       # next build
 
 **Env yang relevan:** `DATABASE_URL`, `AUTH_SECRET`, `NEXT_PUBLIC_APP_URL` (core).
 Opsional/eksternal: `AUTH_GOOGLE_*` (OAuth), `RESEND_API_KEY`+`EMAIL_FROM` (email — tanpa ini email **no-op**),
-`MIDTRANS_*` (payment — belum dipakai), `MUX_*` (**di-drop**, tidak dipakai).
+`MUX_*` (**di-drop**, tidak dipakai). Payment **tidak butuh env apa pun** — checkout-nya dummy.
 
 ---
 
@@ -91,7 +92,7 @@ Hal-hal yang bikin test flaky atau salah asumsi kalau gak tau:
 - **Toast sukses = testid `success-toast`** — toast menghilang setelah beberapa detik. Assert segera setelah aksi.
 - **Seed idempotent tapi stateful** — `npm run db:seed` bisa dijalanin ulang, tapi progress/enrollment dari test sebelumnya **tidak di-reset**. Pakai `student2@example.com` (fresh) atau reset DB sebelum suite.
 - **URL state untuk filter** — filter di `/courses` tersimpan di URL query. Test filter bisa langsung navigate ke URL target, gak harus klik UI dari awal.
-- **Checkout skeleton** — UI ada tapi Snap no-op tanpa `MIDTRANS_SERVER_KEY`. Jangan test payment end-to-end sampai key dikonfigurasi. Test bisa assert `payment-not-configured` state.
+- **Checkout = simulasi, bukan gateway** — di `/checkout/status` transaksi PENDING punya panel `payment-simulator` dengan dua tombol (`simulate-success-button` / `simulate-cancel-button`). Nggak ada popup eksternal, nggak ada webhook, nggak ada timer — hasil pembayaran sepenuhnya ditentukan aksi user, jadi deterministik. Setelah klik, halaman di-refresh dan status dibaca ulang dari DB.
 - **Course cover = CSS 3D text generatif** — jangan test dengan screenshot pixel-perfect. Assert `course-cover` visible dan berisi label yang benar.
 
 ---
@@ -161,8 +162,8 @@ Seed bersifat idempotent & deterministik (`npm run db:seed`). Tidak ada UI ganti
 | Review & rating | ✅ | Hanya enrolled boleh review; bintang di card + detail; 1 review/user/course. |
 | Recommendation ("Course terkait") | ✅ | Kategori sama, terpopuler, di course detail. |
 | Email notification (Resend) | ⚠️ Partial | Enrollment & completion email. **No-op tanpa `RESEND_API_KEY`** — pengiriman nyata belum diverifikasi. |
-| **Checkout & Payment (Midtrans)** | 🚧 **Skeleton** | UI + alur lengkap (course detail "Buy" → `/checkout/[courseId]` → `/checkout/status`). Webhook `/api/webhooks/midtrans` + logic (verify signature, cek amount, idempotent, auto-enrol) **sudah ada & unit-tested**. Tapi panggilan Snap **no-op tanpa `MIDTRANS_SERVER_KEY`** → tombol "Pay Now" memunculkan state "payment belum dikonfigurasi" (transaksi PENDING tetap tercatat). **Belum bisa bayar sandbox nyata.** |
-| Purchase history | ✅ | `/purchase-history` — daftar transaksi user (status badge). |
+| **Checkout & Payment (dummy)** | ✅ | Alur penuh: course detail "Buy" → `/checkout/[courseId]` (pilih metode) → transaksi PENDING → `/checkout/status` → payment simulator (settle/cancel) → SUCCESS + auto-enrol. **Tidak ada payment gateway** (Midtrans di-drop) — pembayaran disimulasikan di server, tapi transaksinya nyata di DB. Idempotensi, ownership, dan atomicity settle+enroll unit-tested. |
+| Purchase history | ✅ | `/purchase-history` — daftar transaksi user (status badge) + link "Lanjutkan pembayaran" untuk PENDING. |
 | Admin transactions / categories | ◻️ Placeholder | Stub sampai fase terkait. |
 
 Legenda: ✅ jalan & bisa di-test · ⚠️ jalan dengan batasan · ❌ belum ada · ◻️ placeholder.
@@ -183,7 +184,7 @@ Legenda: ✅ jalan & bisa di-test · ⚠️ jalan dengan batasan · ❌ belum ad
 **Admin (sidebar console):**
 `/admin` · `/admin/courses` · `/admin/users` · `/admin/transactions` · `/admin/categories` · `/admin/settings`
 
-**API (route handlers):** `/api/auth/[...nextauth]` · `/api/certificates/[courseId]` · `/api/webhooks/midtrans` (POST, payment notification)
+**API (route handlers):** `/api/auth/[...nextauth]` · `/api/certificates/[courseId]`
 
 > URL publik pakai **slug** (`/courses/next-js-14-untuk-pemula`), internal pakai id.
 
@@ -225,7 +226,9 @@ Dijaga konsisten di seluruh app (lihat `CLAUDE.md`):
 
 **Admin:** `admin-dashboard` `admin-stats-cards` · `admin-course-list` `admin-course-filters` `admin-archive-button` `admin-unarchive-button` · `admin-user-list` `admin-role-dropdown` `admin-role-confirm-dialog` `admin-role-confirm`
 
-**Checkout (skeleton):** `checkout-page` `order-summary` `order-total` `pay-now-button` `checkout-error` `payment-not-configured` · `checkout-status` `status-success` `status-pending` `status-failed` `start-learning-button` `retry-payment-button` `status-poller` · `purchase-history` `transaction-row`
+**Checkout (dummy):** `checkout-page` `order-summary` `order-title` `order-total` `checkout-form` `payment-method-bank_transfer` `payment-method-e_wallet` `payment-method-credit_card` `pay-now-button` `checkout-error` `dummy-payment-note` · `checkout-status` `status-success` `status-pending` `status-failed` `payment-simulator` `simulate-success-button` `simulate-cancel-button` `simulator-error` `transaction-detail` `detail-order-id` `detail-payment-method` `detail-status` `detail-amount` `start-learning-button` `retry-payment-button` · `purchase-history` `transaction-row` `continue-payment-link` `purchase-history-empty`
+
+Radio metode pembayaran punya `name="paymentMethod"`; keduanya (form & simulator) merender `loading` saat submit.
 
 **RBAC / shell:** `forbidden-page` `forbidden-back` · `instructor-sidebar` `admin-sidebar` `workspace-topbar` `workspace-breadcrumb`
 
@@ -238,7 +241,7 @@ Dijaga konsisten di seluruh app (lihat `CLAUDE.md`):
 3. **Instructor course lifecycle** — create (DRAFT) → tambah lesson → publish (gagal bila 0 lesson) → student bisa belajar → unpublish → delete (blok bila ada enrollment). Ownership: instruktur A tak bisa edit course B.
 4. **Review** — hanya enrolled boleh kirim; 1 review/user/course (upsert); avg & count update; non-enrolled tak lihat form.
 5. **RBAC + redirect-by-role** — lihat [§4](#4-personas--rbac).
-6. **Checkout skeleton** — UI ada, assert `payment-not-configured` state. Jangan tulis test payment end-to-end sampai `MIDTRANS_SERVER_KEY` dikonfigurasi. Webhook logic unit-tested di repo ini.
+6. **Checkout (dummy)** — beli course berbayar: pilih metode → PENDING → simulate success → SUCCESS + otomatis enrolled → bisa nonton. Negative: simulate cancel → CANCELLED (tidak enrolled, bisa retry); klik "Bayar Sekarang" dua kali → tetap satu order; buka `/checkout/status?order_id=` milik user lain → 404; sudah enrolled → `/checkout/[courseId]` redirect ke course detail.
 
 ---
 
@@ -253,8 +256,7 @@ Dasar: **Likelihood** (bug muncul) × **Impact** (dampak ke user/bisnis).
 | RBAC + ownership check | High | High | 🔴 Critical | Full negative testing per role + direct URL |
 | Certificate (eligibility, idempotent, ownership) | Med | High | 🟠 High | E2E completion flow + direct API |
 | Free enrollment + access control | Med | High | 🟠 High | E2E + non-enrolled blocked |
-| Checkout skeleton (payment-not-configured state) | Med | Med | 🟡 Medium | Smoke: assert UI muncul + state benar |
-| Checkout E2E (bayar sandbox nyata) | — | High | ⏳ Tunggu | Setelah `MIDTRANS_SERVER_KEY` dikonfigurasi |
+| Checkout dummy (state machine, idempotensi, auto-enrol) | Med | High | 🟠 High | E2E success + cancel + retry; negative: double submit, order user lain, forge query param |
 | Course publish validation (min 1 lesson) | Med | Med | 🟡 Medium | Happy path + 0 lesson → gagal |
 | Instructor lesson management (ownership) | Med | Med | 🟡 Medium | Ownership test + move persist |
 | Search (debounce, filter kombinasi) | Low | Med | 🟡 Medium | Happy path + empty state + URL state |
@@ -283,7 +285,7 @@ Dasar: **Likelihood** (bug muncul) × **Impact** (dampak ke user/bisnis).
 
 ## 11. Batasan & risiko yang diketahui (untuk dicatat di test plan)
 
-- **Payment (Midtrans) baru skeleton** — UI + webhook logic ada & unit-tested, tapi panggilan Snap **no-op tanpa `MIDTRANS_SERVER_KEY`**; belum bisa bayar sandbox nyata (butuh kredensial + webhook URL via ngrok/simulator). Course berbayar belum benar-benar bisa dibeli end-to-end.
+- **Payment tanpa gateway** — pembayaran disimulasikan di app (user yang memilih hasilnya), jadi tidak ada bukti integrasi payment provider nyata. Status `FAILED`, `EXPIRED`, `REFUNDED` ada di enum tapi **tidak reachable** lewat UI; jangan tulis test untuk ketiganya. Yang reachable: `PENDING`, `SUCCESS`, `CANCELLED`.
 - **Email (Resend) belum diverifikasi kirim** — tanpa `RESEND_API_KEY` jadi no-op; tidak ada bukti email terkirim end-to-end.
 - **Mux di-drop** — video = URL input (mp4 / YouTube embed), tidak ada upload/transcoding. Field `videoAssetId`/`videoPlaybackId` ada di schema tapi tidak dipakai.
 - **Section disembunyikan dari instruktur** — di DB tetap Course→Section→Lecture, tapi instruktur lihat lesson **flat**; student render flat bila course ≤1 section. Course seed multi-section tetap per-section.
@@ -344,4 +346,4 @@ Performance track (setelah semua di atas): k6, Lighthouse CI (+ JMeter/Locust op
 3. Cek `git log --oneline -20` — mungkin ada perubahan setelah doc ini ditulis
 4. Baca §3B (automation gotchas) sebelum nulis test apapun
 5. Mulai dari 🔴 Critical di §9B (quiz engine + video progress + RBAC)
-6. Checkout E2E: tunggu sampai `MIDTRANS_SERVER_KEY` dikonfigurasi (Fase 2)
+6. Checkout E2E sudah bisa dijalankan penuh (dummy payment, tanpa kredensial apa pun)

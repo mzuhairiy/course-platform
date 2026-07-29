@@ -275,16 +275,16 @@ enum TransactionStatus {
   REFUNDED
 }
 
+// Checkout-nya dummy (tanpa payment gateway) — lihat docs/plan/phase-2-checkout.md.
 model Transaction {
   id              String            @id @default(cuid())
   userId          String
   courseId        String
-  orderId         String            @unique  // ID yang dikirim ke Midtrans
+  orderId         String            @unique  // ORD-{base36 ts}-{random6}, dipakai di URL status
   amount          Int
   status          TransactionStatus @default(PENDING)
-  paymentMethod   String?
-  midtransToken   String?           // Snap token
-  midtransResponse Json?            // Raw response untuk debugging
+  paymentMethod   String?           // salah satu value di src/config/payment.ts
+  paymentPayload  Json?             // jejak simulasi pembayaran (audit/debug)
   paidAt          DateTime?
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt

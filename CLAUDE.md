@@ -21,9 +21,9 @@ Showcase features (yang akan di-test paling dalam nanti): **Checkout & Payment, 
 
 ## Tech Stack
 
-Next.js 14+ (App Router) · TypeScript strict · PostgreSQL · Prisma · Auth.js v5 · Tailwind + shadcn/ui · React Hook Form + Zod · Midtrans (payment) · Cloudflare R2 (storage) · Deploy ke Vercel. Video via URL input (Mux di-drop).
+Next.js 14+ (App Router) · TypeScript strict · PostgreSQL · Prisma · Auth.js v5 · Tailwind + shadcn/ui · React Hook Form + Zod · Cloudflare R2 (storage) · Deploy ke Vercel. Video via URL input (Mux di-drop). **Payment gateway di-drop** — checkout dummy/simulasi, transaksi tetap tercatat di DB.
 
-Arsitektur: Server Components default, Client Components hanya saat butuh interactivity. Mutation lewat Server Actions. Route Handlers (`/api/`) cuma untuk webhook.
+Arsitektur: Server Components default, Client Components hanya saat butuh interactivity. Mutation lewat Server Actions. Route Handlers (`/api/`) cuma untuk kasus non-mutation (Auth.js, download sertifikat).
 
 ---
 
@@ -47,7 +47,7 @@ Struktur lengkap ada di `docs/reference/architecture.md`. Ringkas:
 ```
 src/app/          # Routes (grouped: (marketing), (auth), (student), (instructor), (admin))
 src/components/   # ui/ (shadcn) · shared/ · features/
-src/lib/          # db, auth, midtrans, utils
+src/lib/          # db, auth, utils
 src/server/       # actions/ · services/ (business logic)
 src/schemas/      # Zod schemas (shared client+server)
 tests/            # unit/ · components/ HANYA (white-box)
@@ -132,6 +132,6 @@ Kalau sebuah fitur menyentuh schema, update `docs/reference/schema.md` dulu sebe
 
 ## Fokus Saat Ini
 
-**Fase 3 — Learning Experience (`docs/plan/phase-3-learning.md`): progress tracking, certificate, quiz engine.**
-Fase 1 (MVP), 1B (content), dan ad-hoc features (search, theme navy, profile, course cover) sudah DONE.
-Fase 2 (Checkout & Midtrans) ditunda — dikerjakan setelah Fase 3. CI/CD, environment staging, dan automation repo menyusul, beririsan dengan fase testing.
+Semua fase build (1, 1B, ad-hoc, 2, 3, 4, 5) sudah DONE — cek tabel status di `PROJECT_PLAN.md`.
+Fase 2 (Checkout) selesai tanpa payment gateway: checkout dummy + payment simulator, transaksi tercatat di DB.
+Berikutnya: CI/CD, environment staging, dan automation repo — beririsan dengan fase testing.

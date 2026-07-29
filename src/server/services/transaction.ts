@@ -2,8 +2,9 @@ import "server-only";
 
 import { Prisma, TransactionStatus } from "@prisma/client";
 
+import type { PaymentMethod } from "@/config/payment";
 import { db } from "@/lib/db";
-import { verifySignature } from "@/lib/midtrans";
+import type { PaymentOutcome } from "@/schemas/checkout";
 
 const transactionSelect = {
   id: true,
@@ -30,7 +31,7 @@ export function getUserTransactions(userId: string) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Checkout + webhook (Fase 2 skeleton)
+// Dummy checkout (no payment gateway — see src/config/payment.ts)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Unique, traceable order id: ORD-{timestamp}-{random6}. */
@@ -38,51 +39,6 @@ export function generateOrderId(): string {
   const ts = Date.now().toString(36).toUpperCase();
   const rand = Math.random().toString(36).slice(2, 8).toUpperCase();
   return `ORD-${ts}-${rand}`;
-}
-
-/** Subset of the Midtrans notification payload we rely on. */
-export type MidtransNotification = {
-  order_id: string;
-  status_code: string;
-  gross_amount: string;
-  signature_key: string;
-  transaction_status: string;
-  fraud_status?: string;
-  payment_type?: string;
-};
-
-export type NotificationResult = {
-  ok: boolean;
-  /** HTTP status the webhook route should return. */
-  status: number;
-  message: string;
-};
-
-/** Map a Midtrans transaction_status (+fraud) to our internal status. */
-export function mapMidtransStatus(
-  transactionStatus: string,
-  fraudStatus?: string,
-): TransactionStatus | null {
-  switch (transactionStatus) {
-    case "capture":
-      return fraudStatus === "accept"
-        ? TransactionStatus.SUCCESS
-        : TransactionStatus.PENDING;
-    case "settlement":
-      return TransactionStatus.SUCCESS;
-    case "pending":
-      return TransactionStatus.PENDING;
-    case "deny":
-    case "cancel":
-      return TransactionStatus.CANCELLED;
-    case "expire":
-      return TransactionStatus.EXPIRED;
-    case "refund":
-    case "partial_refund":
-      return TransactionStatus.REFUNDED;
-    default:
-      return null;
-  }
 }
 
 export function getTransactionByOrderId(orderId: string) {
@@ -94,6 +50,7 @@ export function createPendingTransaction(input: {
   courseId: string;
   orderId: string;
   amount: number;
+  paymentMethod: PaymentMethod;
 }) {
   return db.transaction.create({
     data: {
@@ -101,6 +58,7 @@ export function createPendingTransaction(input: {
       courseId: input.courseId,
       orderId: input.orderId,
       amount: input.amount,
+      paymentMethod: input.paymentMethod,
       status: TransactionStatus.PENDING,
     },
     select: { id: true, orderId: true },
@@ -114,11 +72,11 @@ export function findPendingTransaction(userId: string, courseId: string) {
   });
 }
 
-/** Persist the Snap token returned by Midtrans for later reuse. */
-export function saveMidtransToken(orderId: string, token: string) {
+/** User can switch method before paying; the pending order id stays the same. */
+export function updatePaymentMethod(orderId: string, method: PaymentMethod) {
   return db.transaction.update({
     where: { orderId },
-    data: { midtransToken: token },
+    data: { paymentMethod: method },
     select: { id: true },
   });
 }
@@ -131,81 +89,109 @@ export function getOwnedTransaction(userId: string, orderId: string) {
       orderId: true,
       status: true,
       amount: true,
-      course: { select: { id: true, title: true, slug: true } },
+      paymentMethod: true,
+      createdAt: true,
+      course: {
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          // First lecture, so a settled order can link straight into the player.
+          sections: {
+            orderBy: { order: "asc" },
+            take: 1,
+            select: {
+              lectures: { orderBy: { order: "asc" }, take: 1, select: { id: true } },
+            },
+          },
+        },
+      },
     },
   });
 }
 
+export type SettlementResult = {
+  ok: boolean;
+  status: TransactionStatus | null;
+  message: string;
+  /** Set when the transaction settled, so the caller can link to the course. */
+  courseId?: string;
+};
+
 /**
- * Core webhook logic (HTTP-free, unit-tested). Verifies signature + amount,
- * is idempotent (ignores anything after SUCCESS), and on the SUCCESS transition
- * updates the transaction AND creates the enrollment in one DB transaction.
+ * Apply a simulated payment outcome (HTTP-free, unit-tested).
+ *
+ * - Scoped to the owner: you can never settle someone else's order.
+ * - Idempotent: a second "success" on a settled order is a no-op.
+ * - Only a PENDING transaction can change state.
+ * - On success the transaction update AND the enrollment happen in one DB
+ *   transaction, so a paid order can never end up without access.
  */
-export async function processPaymentNotification(
-  payload: MidtransNotification,
-): Promise<NotificationResult> {
-  const valid = verifySignature(
-    payload.order_id,
-    payload.status_code,
-    payload.gross_amount,
-    payload.signature_key,
-  );
-  if (!valid) {
-    return { ok: false, status: 403, message: "Invalid signature" };
-  }
-
-  const txn = await getTransactionByOrderId(payload.order_id);
+export async function applyPaymentOutcome(
+  userId: string,
+  orderId: string,
+  outcome: PaymentOutcome,
+): Promise<SettlementResult> {
+  const txn = await db.transaction.findFirst({ where: { orderId, userId } });
   if (!txn) {
-    return { ok: false, status: 404, message: "Transaction not found" };
+    return { ok: false, status: null, message: "Transaksi tidak ditemukan." };
   }
 
-  // Guard against tampering: notified amount must match what we recorded.
-  if (Math.round(Number(payload.gross_amount)) !== txn.amount) {
-    return { ok: false, status: 400, message: "Amount mismatch" };
-  }
-
-  // Idempotent: once SUCCESS, ignore any later (possibly out-of-order) notice.
   if (txn.status === TransactionStatus.SUCCESS) {
-    return { ok: true, status: 200, message: "Already settled (no-op)" };
+    return {
+      ok: true,
+      status: TransactionStatus.SUCCESS,
+      message: "Transaksi ini sudah lunas.",
+      courseId: txn.courseId,
+    };
   }
 
-  const nextStatus = mapMidtransStatus(
-    payload.transaction_status,
-    payload.fraud_status,
-  );
-  if (!nextStatus) {
-    return { ok: true, status: 200, message: "Unhandled status (ignored)" };
+  if (txn.status !== TransactionStatus.PENDING) {
+    return {
+      ok: false,
+      status: txn.status,
+      message: "Transaksi ini sudah tidak aktif.",
+    };
   }
 
-  if (nextStatus === TransactionStatus.SUCCESS) {
-    await db.$transaction([
-      db.transaction.update({
-        where: { orderId: payload.order_id },
-        data: {
-          status: TransactionStatus.SUCCESS,
-          paidAt: new Date(),
-          paymentMethod: payload.payment_type ?? null,
-          midtransResponse: payload as unknown as Prisma.InputJsonValue,
-        },
-      }),
-      db.enrollment.upsert({
-        where: {
-          userId_courseId: { userId: txn.userId, courseId: txn.courseId },
-        },
-        create: { userId: txn.userId, courseId: txn.courseId },
-        update: {},
-      }),
-    ]);
-    return { ok: true, status: 200, message: "Settled + enrolled" };
+  const payload = {
+    simulated: true,
+    outcome,
+    paymentMethod: txn.paymentMethod,
+  } satisfies Prisma.InputJsonObject;
+
+  if (outcome === "cancel") {
+    await db.transaction.update({
+      where: { orderId },
+      data: { status: TransactionStatus.CANCELLED, paymentPayload: payload },
+    });
+    return {
+      ok: true,
+      status: TransactionStatus.CANCELLED,
+      message: "Pembayaran dibatalkan.",
+    };
   }
 
-  await db.transaction.update({
-    where: { orderId: payload.order_id },
-    data: {
-      status: nextStatus,
-      paymentMethod: payload.payment_type ?? null,
-      midtransResponse: payload as unknown as Prisma.InputJsonValue,
-    },
-  });
-  return { ok: true, status: 200, message: `Updated to ${nextStatus}` };
+  await db.$transaction([
+    db.transaction.update({
+      where: { orderId },
+      data: {
+        status: TransactionStatus.SUCCESS,
+        paidAt: new Date(),
+        paymentPayload: payload,
+      },
+    }),
+    db.enrollment.upsert({
+      where: { userId_courseId: { userId: txn.userId, courseId: txn.courseId } },
+      create: { userId: txn.userId, courseId: txn.courseId },
+      update: {},
+    }),
+  ]);
+
+  return {
+    ok: true,
+    status: TransactionStatus.SUCCESS,
+    message: "Pembayaran berhasil.",
+    courseId: txn.courseId,
+  };
 }

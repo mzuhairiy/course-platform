@@ -1,41 +1,59 @@
 "use server";
 
 import { CourseStatus } from "@prisma/client";
+import { revalidatePath } from "next/cache";
 
 import { getCurrentUser } from "@/lib/auth";
-import { createSnapTransaction } from "@/lib/midtrans";
+import { toFieldErrors, type FieldErrors } from "@/lib/form-errors";
+import {
+  checkoutSchema,
+  paymentSimulationSchema,
+  type CheckoutInput,
+  type PaymentSimulationInput,
+} from "@/schemas/checkout";
 import { getCourseEnrollmentTarget } from "@/server/services/course";
 import { findEnrollment } from "@/server/services/enrollment";
 import {
+  applyPaymentOutcome,
   createPendingTransaction,
   findPendingTransaction,
   generateOrderId,
-  saveMidtransToken,
+  updatePaymentMethod,
 } from "@/server/services/transaction";
 
 export type CheckoutResult =
+  | { status: "success"; orderId: string }
   | {
-      status: "success";
-      orderId: string;
-      token: string | null;
-      /** false when Midtrans isn't configured (skeleton/no-op mode). */
-      configured: boolean;
-    }
-  | { status: "error"; message: string; redirectTo?: string };
+      status: "error";
+      message: string;
+      fieldErrors?: FieldErrors;
+      redirectTo?: string;
+    };
 
 /**
- * Start (or resume) checkout for a paid course. Creates a PENDING transaction
- * and asks Midtrans for a Snap token. Reuses an existing PENDING transaction so
- * a double click never creates two. In skeleton mode (no server key) the token
- * is null and `configured` is false — the UI shows a "not configured" state.
+ * Start (or resume) checkout for a paid course: records a PENDING transaction
+ * and hands the order id back so the UI can move to the status page. No payment
+ * gateway is involved — settlement happens in simulatePaymentAction.
+ *
+ * Reuses an existing PENDING transaction so a double submit never creates two.
  */
 export async function createCheckoutAction(
-  courseId: string,
+  input: CheckoutInput,
 ): Promise<CheckoutResult> {
   const user = await getCurrentUser();
   if (!user) {
     return { status: "error", message: "Kamu harus login untuk checkout." };
   }
+
+  const parsed = checkoutSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: "Input tidak valid",
+      fieldErrors: toFieldErrors(parsed.error),
+    };
+  }
+  const { courseId, paymentMethod } = parsed.data;
 
   const course = await getCourseEnrollmentTarget(courseId);
   if (!course || course.status !== CourseStatus.PUBLISHED) {
@@ -49,44 +67,66 @@ export async function createCheckoutAction(
     };
   }
 
-  const enrolled = await findEnrollment(user.id, courseId);
-  if (enrolled) {
+  if (await findEnrollment(user.id, courseId)) {
     return {
       status: "error",
       message: "Kamu sudah terdaftar di course ini.",
-      redirectTo: `/learn/${courseId}`,
+      redirectTo: `/courses/${course.slug}`,
     };
   }
 
-  // Reuse an active PENDING transaction to avoid duplicates on double submit.
   const pending = await findPendingTransaction(user.id, courseId);
-  const orderId = pending?.orderId ?? generateOrderId();
-  if (!pending) {
-    await createPendingTransaction({
-      userId: user.id,
-      courseId,
-      orderId,
-      amount: course.price,
-    });
+  if (pending) {
+    // Resume the same order; the user may have picked a different method.
+    if (pending.paymentMethod !== paymentMethod) {
+      await updatePaymentMethod(pending.orderId, paymentMethod);
+    }
+    return { status: "success", orderId: pending.orderId };
   }
 
-  const snap = await createSnapTransaction({
+  const orderId = generateOrderId();
+  await createPendingTransaction({
+    userId: user.id,
+    courseId,
     orderId,
-    grossAmount: course.price,
-    customer: { first_name: user.name ?? "Student", email: user.email ?? "" },
-    items: [
-      { id: course.id, name: course.title, price: course.price, quantity: 1 },
-    ],
+    amount: course.price,
+    paymentMethod,
   });
 
-  if (snap.token) {
-    await saveMidtransToken(orderId, snap.token);
+  revalidatePath("/purchase-history");
+  return { status: "success", orderId };
+}
+
+export type SimulationResult =
+  | { status: "success"; message: string }
+  | { status: "error"; message: string };
+
+/**
+ * Dummy payment simulator: settle or cancel a PENDING order. Ownership,
+ * idempotency, and the settle+enroll atomicity all live in applyPaymentOutcome.
+ */
+export async function simulatePaymentAction(
+  input: PaymentSimulationInput,
+): Promise<SimulationResult> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { status: "error", message: "Kamu harus login." };
   }
 
-  return {
-    status: "success",
-    orderId,
-    token: snap.token,
-    configured: !snap.skipped,
-  };
+  const parsed = paymentSimulationSchema.safeParse(input);
+  if (!parsed.success) {
+    return { status: "error", message: "Input tidak valid" };
+  }
+  const { orderId, outcome } = parsed.data;
+
+  const result = await applyPaymentOutcome(user.id, orderId, outcome);
+  if (!result.ok) {
+    return { status: "error", message: result.message };
+  }
+
+  revalidatePath("/checkout/status");
+  revalidatePath("/purchase-history");
+  if (result.courseId) revalidatePath(`/learn/${result.courseId}`);
+
+  return { status: "success", message: result.message };
 }

@@ -20,7 +20,7 @@ dashboard.
 - **Database:** PostgreSQL + Prisma 6
 - **Auth:** Auth.js v5 (Credentials, JWT sessions)
 - **Forms/Validation:** React Hook Form + Zod
-- **Payment:** Midtrans · **Video:** Mux · **Storage:** Cloudflare R2 · **Email:** Resend (later phases)
+- **Payment:** dummy checkout (no gateway) · **Video:** URL input · **Storage:** Cloudflare R2 · **Email:** Resend
 - **Testing (this repo):** Vitest (white-box unit/component). E2E / API /
   performance live in the separate `course-platform-automation` repo.
 
