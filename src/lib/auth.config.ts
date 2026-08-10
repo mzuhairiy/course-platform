@@ -12,6 +12,10 @@ export const authConfig = {
   pages: {
     signIn: SIGN_IN_ROUTE,
   },
+  // Without this, middleware's own NextAuth(authConfig) instance can't trust
+  // the request Host header in production (no AUTH_URL set) and misreads the
+  // session — role gates then reject even correctly-authenticated users.
+  trustHost: true,
   // Providers are added in auth.ts; the edge instance only reads the JWT.
   providers: [],
   callbacks: {

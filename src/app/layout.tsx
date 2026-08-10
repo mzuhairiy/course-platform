@@ -17,6 +17,12 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
+// Every route depends on session/auth state — never statically prerender.
+// Without this, `next build` attempts to prerender pages that query the
+// database, which fails when there's no DB reachable during the build step
+// (e.g. inside an isolated Docker build stage).
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: {
     default: siteConfig.name,

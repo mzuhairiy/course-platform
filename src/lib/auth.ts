@@ -18,7 +18,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   // Credentials provider requires the JWT strategy in Auth.js v5. Must be set
   // explicitly because the presence of an adapter otherwise defaults to "database".
   session: { strategy: "jwt" },
-  trustHost: true,
   ...authConfig,
   providers: [
     Credentials({

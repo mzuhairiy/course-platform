@@ -1,30 +1,41 @@
-# Local PostgreSQL for development.
-# Usage:
-#   docker compose up -d      # start
-#   docker compose down       # stop (keeps data)
-#   docker compose down -v    # stop and wipe data
-#
-# Connection string (see .env.example):
-#   postgresql://postgres:postgres@localhost:5432/course_platform?schema=public
-
 services:
   postgres:
     image: postgres:16-alpine
     container_name: course-platform-db
-    restart: unless-stopped
-    ports:
-      - "5432:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: course_platform
+    ports:
+      - "5434:5432"
     volumes:
-      - course_platform_pgdata:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d course_platform"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
       timeout: 5s
       retries: 5
 
+  app:
+    container_name: course-platform-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/course_platform
+      AUTH_SECRET: your-auth-secret-change-this
+      NEXT_PUBLIC_APP_URL: http://localhost:3002
+      # Opsional — isi kalau butuh:
+      # AUTH_GOOGLE_ID: ...
+      # AUTH_GOOGLE_SECRET: ...
+      # RESEND_API_KEY: ...
+      # EMAIL_FROM: ...
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
-  course_platform_pgdata:
+  postgres_data:
