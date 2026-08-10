@@ -2,14 +2,16 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 
-export function CoursePagination({
+export function Pagination({
   currentPage,
   totalPages,
   baseQuery,
+  basePath,
 }: {
   currentPage: number;
   totalPages: number;
   baseQuery: string;
+  basePath: string;
 }) {
   if (totalPages <= 1) return null;
 
@@ -17,7 +19,7 @@ export function CoursePagination({
     const params = new URLSearchParams(baseQuery);
     if (page > 1) params.set("page", String(page));
     const query = params.toString();
-    return query ? `/courses?${query}` : "/courses";
+    return query ? `${basePath}?${query}` : basePath;
   };
 
   const pages = Array.from({ length: totalPages }, (_, i) => i + 1);

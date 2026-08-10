@@ -39,7 +39,6 @@ export default async function AdminDashboardPage() {
         <StatCard
           label="Total revenue"
           value={formatPrice(stats.totalRevenue)}
-          hint="Tersedia setelah Fase 2"
           testid="stat-revenue"
         />
         <StatCard

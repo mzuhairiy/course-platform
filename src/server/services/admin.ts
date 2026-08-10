@@ -1,6 +1,6 @@
 import "server-only";
 
-import { CourseStatus, Prisma, UserRole } from "@prisma/client";
+import { CourseStatus, Prisma, TransactionStatus, UserRole } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import { ForbiddenError } from "@/lib/rbac";
@@ -14,7 +14,7 @@ export class SelfRoleChangeError extends Error {
   }
 }
 
-function assertAdmin(actor: AdminActor) {
+export function assertAdmin(actor: AdminActor) {
   if (actor.role !== UserRole.ADMIN) {
     throw new ForbiddenError("Hanya admin yang bisa melakukan ini.");
   }
@@ -117,4 +117,59 @@ export function getInstructorOptions() {
     select: { id: true, name: true },
     orderBy: { name: "asc" },
   });
+}
+
+export type AdminTransactionFilters = {
+  status?: TransactionStatus;
+  q?: string;
+};
+
+const adminTransactionSelect = {
+  id: true,
+  orderId: true,
+  amount: true,
+  status: true,
+  paymentMethod: true,
+  paidAt: true,
+  createdAt: true,
+  user: { select: { id: true, name: true, email: true } },
+  course: { select: { id: true, title: true, slug: true } },
+} satisfies Prisma.TransactionSelect;
+
+export type AdminTransactionRow = Prisma.TransactionGetPayload<{
+  select: typeof adminTransactionSelect;
+}>;
+
+/** Admin-wide transaction list: filter by status and free-text search, paginated. */
+export async function getAdminTransactions(
+  filters: AdminTransactionFilters,
+  page: number,
+  perPage: number,
+): Promise<{ rows: AdminTransactionRow[]; total: number }> {
+  const where: Prisma.TransactionWhereInput = {
+    ...(filters.status ? { status: filters.status } : {}),
+    ...(filters.q
+      ? {
+          OR: [
+            { orderId: { contains: filters.q, mode: "insensitive" } },
+            { user: { email: { contains: filters.q, mode: "insensitive" } } },
+            { user: { name: { contains: filters.q, mode: "insensitive" } } },
+            { course: { title: { contains: filters.q, mode: "insensitive" } } },
+          ],
+        }
+      : {}),
+  };
+
+  const [rows, total] = await db.$transaction([
+    db.transaction.findMany({
+      where,
+      select: adminTransactionSelect,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * perPage,
+      take: perPage,
+    }),
+    db.transaction.count({ where }),
+  ]);
+
+  return { rows, total };
 }

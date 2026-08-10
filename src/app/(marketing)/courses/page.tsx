@@ -8,9 +8,9 @@ import {
   CourseGrid,
   CourseGridSkeleton,
 } from "@/components/features/course/course-grid";
-import { CoursePagination } from "@/components/features/course/course-pagination";
 import { CourseSortDropdown } from "@/components/features/course/course-sort-dropdown";
 import { Container } from "@/components/shared/container";
+import { Pagination } from "@/components/shared/pagination";
 import { Section } from "@/components/shared/section";
 import { Button } from "@/components/ui/button";
 import { Heading, Text } from "@/components/ui/typography";
@@ -38,10 +38,11 @@ async function CourseResults({ filters }: { filters: CourseFilters }) {
         {total} course{total === 1 ? "" : "s"} found
       </Text>
       <CourseGrid courses={courses} />
-      <CoursePagination
+      <Pagination
         currentPage={filters.page}
         totalPages={totalPages}
         baseQuery={buildBaseQuery(filters)}
+        basePath="/courses"
       />
     </div>
   );

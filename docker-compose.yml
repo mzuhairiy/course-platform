@@ -24,7 +24,7 @@ services:
     ports:
       - "3002:3000"
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/course_platform
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5434/course_platform
       AUTH_SECRET: your-auth-secret-change-this
       NEXT_PUBLIC_APP_URL: http://localhost:3002
       # Opsional — isi kalau butuh:

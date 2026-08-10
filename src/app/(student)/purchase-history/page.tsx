@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { TransactionStatusBadge } from "@/components/features/transaction/transaction-status-badge";
 import { Container } from "@/components/shared/container";
 import { Section } from "@/components/shared/section";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Heading, Text } from "@/components/ui/typography";
 import { formatDate, formatPrice } from "@/lib/format";
@@ -14,15 +14,6 @@ import { getUserTransactions } from "@/server/services/transaction";
 export const metadata: Metadata = {
   title: "Purchase History",
 };
-
-const STATUS_VARIANT = {
-  SUCCESS: "default",
-  PENDING: "secondary",
-  FAILED: "destructive",
-  EXPIRED: "destructive",
-  CANCELLED: "destructive",
-  REFUNDED: "outline",
-} as const;
 
 export default async function PurchaseHistoryPage() {
   const sessionUser = await getCurrentUser();
@@ -71,9 +62,7 @@ export default async function PurchaseHistoryPage() {
                     <span className="font-semibold">
                       {formatPrice(tx.amount)}
                     </span>
-                    <Badge variant={STATUS_VARIANT[tx.status]}>
-                      {tx.status}
-                    </Badge>
+                    <TransactionStatusBadge status={tx.status} />
                   </div>
                 </CardContent>
               </Card>
