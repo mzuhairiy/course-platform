@@ -26,3 +26,13 @@ const dateFormatter = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" });
 export function formatDate(date: Date | string): string {
   return dateFormatter.format(new Date(date));
 }
+
+const dateTimeFormatter = new Intl.DateTimeFormat("id-ID", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+/** Tanggal + jam, untuk jejak audit yang butuh urutan kejadian yang presisi. */
+export function formatDateTime(date: Date | string): string {
+  return dateTimeFormatter.format(new Date(date));
+}

@@ -164,7 +164,8 @@ Seed bersifat idempotent & deterministik (`npm run db:seed`). Tidak ada UI ganti
 | Email notification (Resend) | ⚠️ Partial | Enrollment & completion email. **No-op tanpa `RESEND_API_KEY`** — pengiriman nyata belum diverifikasi. |
 | **Checkout & Payment (dummy)** | ✅ | Alur penuh: course detail "Buy" → `/checkout/[courseId]` (pilih metode) → transaksi PENDING → `/checkout/status` → payment simulator (settle/cancel) → SUCCESS + auto-enrol. **Tidak ada payment gateway** (Midtrans di-drop) — pembayaran disimulasikan di server, tapi transaksinya nyata di DB. Idempotensi, ownership, dan atomicity settle+enroll unit-tested. |
 | Purchase history | ✅ | `/purchase-history` — daftar transaksi user (status badge) + link "Lanjutkan pembayaran" untuk PENDING. |
-| Admin transactions / categories | ◻️ Placeholder | Stub sampai fase terkait. |
+| Admin: transactions (moderasi manual) | ✅ | List + filter status/pencarian/rentang tanggal (semua di URL) + ringkasan per status. Detail `/admin/transactions/[orderId]`: data pembeli, payload simulasi, jejak audit. **Transisi status manual** menggantikan webhook gateway: PENDING → SUCCESS/FAILED/EXPIRED/CANCELLED, SUCCESS → REFUNDED. Status lain final. SUCCESS meng-enroll user (atomic), REFUNDED mencabut akses kecuali user punya transaksi SUCCESS lain untuk course sama. |
+| Admin: categories (CRUD) | ✅ | Tambah/edit/hapus kategori; slug unik divalidasi; hapus diblok kalau masih dipakai course/expert (alasan tampil inline). |
 
 Legenda: ✅ jalan & bisa di-test · ⚠️ jalan dengan batasan · ❌ belum ada · ◻️ placeholder.
 
@@ -226,6 +227,12 @@ Dijaga konsisten di seluruh app (lihat `CLAUDE.md`):
 
 **Admin:** `admin-dashboard` `admin-stats-cards` · `admin-course-list` `admin-course-filters` `admin-archive-button` `admin-unarchive-button` · `admin-user-list` `admin-role-dropdown` `admin-role-confirm-dialog` `admin-role-confirm`
 
+**Admin — transactions:** `admin-transactions` `admin-transaction-summary` `summary-revenue` `summary-total` `summary-pending` `summary-refunded` `summary-count-{pending,success,failed,expired,cancelled,refunded}` · `admin-transaction-filters` `filter-status` `filter-search` `filter-from` `filter-to` `apply-filters` `reset-filters` · `admin-transaction-list` `admin-transaction-item` `admin-transaction-link` `admin-transactions-empty` · detail: `admin-transaction-detail` `back-to-transactions` `detail-user` `detail-email` `detail-role` `detail-course` `detail-course-price` `detail-amount` `detail-method` `detail-created` `detail-paid` · aksi: `admin-transaction-actions` `admin-transaction-action-{success,failed,expired,cancelled,refunded}` `admin-transaction-status-final` `admin-transaction-confirm-dialog` `admin-transaction-note` `admin-transaction-confirm` `admin-transaction-cancel` `admin-transaction-error` · audit: `admin-transaction-audit` `admin-transaction-audit-list` `admin-transaction-audit-item` `admin-transaction-audit-empty` `admin-transaction-payload-toggle` `admin-transaction-payload`
+
+Filter transaksi memakai query key `status` `q` `from` `to` `page` (deep-linkable); `from`/`to` format `YYYY-MM-DD`, inklusif di kedua ujung, nilai tak valid diabaikan. Dialog aksi merender `loading` saat submit dan menampilkan error inline (`admin-transaction-error`), bukan cuma toast.
+
+**Admin — categories:** `admin-categories` `category-manager` `add-category-button` `admin-category-list` `admin-category-item` `edit-category-button` `admin-categories-empty` · form: `category-form-dialog` `category-form` `category-name-input` `category-slug-input` `category-description-input` `category-form-submit` `category-form-error` `category-{name,slug,description}-error` · hapus: `delete-category-button` `delete-category-confirm-dialog` `delete-category-confirm` `delete-category-cancel` `delete-category-error`
+
 **Checkout (dummy):** `checkout-page` `order-summary` `order-title` `order-total` `checkout-form` `payment-method-bank_transfer` `payment-method-e_wallet` `payment-method-credit_card` `pay-now-button` `checkout-error` `dummy-payment-note` · `checkout-status` `status-success` `status-pending` `status-failed` `payment-simulator` `simulate-success-button` `simulate-cancel-button` `simulator-error` `transaction-detail` `detail-order-id` `detail-payment-method` `detail-status` `detail-amount` `start-learning-button` `retry-payment-button` · `purchase-history` `transaction-row` `continue-payment-link` `purchase-history-empty`
 
 Radio metode pembayaran punya `name="paymentMethod"`; keduanya (form & simulator) merender `loading` saat submit.
@@ -264,7 +271,8 @@ Dasar: **Likelihood** (bug muncul) × **Impact** (dampak ke user/bisnis).
 | Review & rating | Low | Low | 🟢 Low | Happy path + 1 per user guard |
 | Course cover (3D text generatif) | Low | Low | 🟢 Low | Smoke: element visible + label benar |
 | Email notification | Low | Low | 🟢 Low | Unit test no-op (sudah ada); skip E2E |
-| Placeholder (admin transactions, categories) | — | — | ⬜ Skip | Belum ada fitur |
+| Admin transaction transition (refund cabut akses) | Med | High | 🔴 High | Matriks transisi legal/ilegal + cek enrollment setelah refund |
+| Admin category CRUD (slug unik, delete diblok) | Low | Med | 🟡 Medium | Happy path + slug duplikat + hapus kategori terpakai |
 
 ---
 
@@ -274,7 +282,11 @@ Dasar: **Likelihood** (bug muncul) × **Impact** (dampak ke user/bisnis).
 `lesson-service` (default section, move, ownership) · `quiz-builder-service` (validasi soal, ownership) ·
 `quiz-grading` · `quiz-service` · `progress-service` (threshold, resume, completion) ·
 `enrollment-rules` · `rbac` · `roles` · `review-service` (enrollment-gated, summary) ·
-`admin-analytics` (changeUserRole, archive, instructor stats) · `email` (template + no-op transport) ·
+`admin-analytics` (changeUserRole, archive, instructor stats) ·
+`admin-transactions` (filter status/pencarian/rentang tanggal, summary per status, parsing query string) ·
+`admin-transaction-status` (matriks transisi, guard non-admin, settle+enroll atomic, refund cabut akses & pengecualiannya, audit trail) ·
+`transaction-service` (idempotensi, ownership, atomicity simulator) · `category-service` ·
+`email` (template + no-op transport) ·
 `certificate-helpers` · `certificate-service` · `profile-actions` · `format` · `utils` (slugify).
 `tests/components/` — `instructor-showcase` · `nav-category-menu` · `search-input` · `settings-view`.
 
@@ -299,7 +311,8 @@ Dasar: **Likelihood** (bug muncul) × **Impact** (dampak ke user/bisnis).
 Entitas inti: **User**(role) · **Category** · **Course**(status DRAFT/PUBLISHED/ARCHIVED, level, price, slug) ·
 **Section** → **Lecture**(VIDEO/READING/QUIZ) · **Enrollment**(completedAt) · **LectureProgress**(watchedSeconds, isCompleted) ·
 **Quiz** → **QuizQuestion**(options JSON, correctAnswerIds) → **QuizAttempt**(score, passed) ·
-**Review**(rating 1–5, unique user+course) · **Certificate** · **Transaction**(status — belum dipakai).
+**Review**(rating 1–5, unique user+course) · **Certificate** ·
+**Transaction**(orderId unik, status PENDING/SUCCESS/FAILED/EXPIRED/CANCELLED/REFUNDED, paymentPayload menyimpan jejak simulasi + `adminActions[]` sebagai audit trail aksi admin).
 
 Detail lengkap: `docs/reference/schema.md`. Migrasi: `prisma/migrations/`.
 
