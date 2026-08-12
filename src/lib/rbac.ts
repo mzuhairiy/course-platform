@@ -25,6 +25,19 @@ export function hasRole(
 }
 
 /**
+ * Prefer a freshly-read DB role over the session token's role, so a role
+ * change (grant or revoke) takes effect on the next request instead of
+ * waiting for the user's next sign-in. Falls back to the token role only
+ * when the DB lookup found no user (e.g. deleted mid-session).
+ */
+export function resolveLiveRole(
+  tokenRole: UserRole,
+  dbRole: UserRole | null | undefined,
+): UserRole {
+  return dbRole ?? tokenRole;
+}
+
+/**
  * Defense-in-depth guard for Server Actions. Middleware already gates the
  * route, but middleware can be bypassed — every mutation must re-check the
  * session role server-side. Returns the session user on success; throws

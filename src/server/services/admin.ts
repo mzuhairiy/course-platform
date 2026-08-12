@@ -23,19 +23,33 @@ export function assertAdmin(actor: AdminActor) {
 /** Soft-remove from public listing. ADMIN-only (instructors can't archive). */
 export async function archiveCourse(courseId: string, actor: AdminActor) {
   assertAdmin(actor);
+  const course = await db.course.findUniqueOrThrow({
+    where: { id: courseId },
+    select: { status: true },
+  });
   return db.course.update({
     where: { id: courseId },
-    data: { status: CourseStatus.ARCHIVED },
+    data: {
+      status: CourseStatus.ARCHIVED,
+      preArchiveStatus: course.status,
+    },
     select: { id: true },
   });
 }
 
-/** Bring an archived course back to DRAFT. ADMIN-only. */
+/** Restore an archived course to whatever status it held before archiving. ADMIN-only. */
 export async function unarchiveCourse(courseId: string, actor: AdminActor) {
   assertAdmin(actor);
+  const course = await db.course.findUniqueOrThrow({
+    where: { id: courseId },
+    select: { preArchiveStatus: true },
+  });
   return db.course.update({
     where: { id: courseId },
-    data: { status: CourseStatus.DRAFT },
+    data: {
+      status: course.preArchiveStatus ?? CourseStatus.DRAFT,
+      preArchiveStatus: null,
+    },
     select: { id: true },
   });
 }

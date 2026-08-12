@@ -55,7 +55,7 @@ export async function unarchiveCourseAction(
     return toErrorResult(error);
   }
   revalidatePath("/admin/courses");
-  return { status: "success", message: "Course di-unarchive (DRAFT)" };
+  return { status: "success", message: "Course di-unarchive" };
 }
 
 export async function changeUserRoleAction(

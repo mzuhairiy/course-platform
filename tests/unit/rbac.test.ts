@@ -7,7 +7,7 @@ const { getCurrentUser } = vi.hoisted(() => ({
 
 vi.mock("@/lib/auth", () => ({ getCurrentUser }));
 
-import { ForbiddenError, hasRole, requireRole } from "@/lib/rbac";
+import { ForbiddenError, hasRole, requireRole, resolveLiveRole } from "@/lib/rbac";
 
 const sessionUser = (role: UserRole) => ({
   id: "user_1",
@@ -70,5 +70,24 @@ describe("requireRole", () => {
     await expect(requireRole(UserRole.ADMIN)).rejects.toBeInstanceOf(
       ForbiddenError,
     );
+  });
+});
+
+describe("resolveLiveRole", () => {
+  it("prefers the freshly-read DB role over the stale token role (BUG-002: revoke)", () => {
+    expect(resolveLiveRole(UserRole.INSTRUCTOR, UserRole.STUDENT)).toBe(
+      UserRole.STUDENT,
+    );
+  });
+
+  it("also picks up a promotion the token doesn't know about yet (BUG-002: grant)", () => {
+    expect(resolveLiveRole(UserRole.STUDENT, UserRole.INSTRUCTOR)).toBe(
+      UserRole.INSTRUCTOR,
+    );
+  });
+
+  it("falls back to the token role when the DB lookup finds no user", () => {
+    expect(resolveLiveRole(UserRole.ADMIN, null)).toBe(UserRole.ADMIN);
+    expect(resolveLiveRole(UserRole.ADMIN, undefined)).toBe(UserRole.ADMIN);
   });
 });

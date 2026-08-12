@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   courseCount,
   courseUpdate,
+  courseFindUniqueOrThrow,
   userUpdate,
   enrollmentCount,
   enrollmentFindMany,
@@ -11,6 +12,7 @@ const {
 } = vi.hoisted(() => ({
   courseCount: vi.fn(),
   courseUpdate: vi.fn(),
+  courseFindUniqueOrThrow: vi.fn(),
   userUpdate: vi.fn(),
   enrollmentCount: vi.fn(),
   enrollmentFindMany: vi.fn(),
@@ -19,7 +21,11 @@ const {
 
 vi.mock("@/lib/db", () => ({
   db: {
-    course: { count: courseCount, update: courseUpdate },
+    course: {
+      count: courseCount,
+      update: courseUpdate,
+      findUniqueOrThrow: courseFindUniqueOrThrow,
+    },
     user: { update: userUpdate },
     enrollment: { count: enrollmentCount, findMany: enrollmentFindMany },
     transaction: { aggregate: transactionAggregate },
@@ -28,11 +34,14 @@ vi.mock("@/lib/db", () => ({
 
 vi.mock("@/lib/auth", () => ({ getCurrentUser: vi.fn() }));
 
+import { CourseStatus } from "@prisma/client";
+
 import { ForbiddenError } from "@/lib/rbac";
 import {
   archiveCourse,
   changeUserRole,
   SelfRoleChangeError,
+  unarchiveCourse,
   type AdminActor,
 } from "@/server/services/admin";
 import { getInstructorStats } from "@/server/services/analytics";
@@ -43,6 +52,7 @@ const instructor: AdminActor = { id: "inst_1", role: UserRole.INSTRUCTOR };
 beforeEach(() => {
   vi.clearAllMocks();
   courseUpdate.mockResolvedValue({ id: "c1" });
+  courseFindUniqueOrThrow.mockResolvedValue({ status: CourseStatus.PUBLISHED });
   userUpdate.mockResolvedValue({ id: "u1", role: UserRole.INSTRUCTOR });
 });
 
@@ -80,10 +90,48 @@ describe("archiveCourse", () => {
     expect(courseUpdate).not.toHaveBeenCalled();
   });
 
-  it("archives when admin", async () => {
+  it("archives when admin, and remembers the prior status for later restore", async () => {
+    courseFindUniqueOrThrow.mockResolvedValue({ status: CourseStatus.PUBLISHED });
+
     await archiveCourse("c1", admin);
 
-    expect(courseUpdate.mock.calls[0][0].data.status).toBe("ARCHIVED");
+    expect(courseUpdate.mock.calls[0][0].data).toEqual({
+      status: CourseStatus.ARCHIVED,
+      preArchiveStatus: CourseStatus.PUBLISHED,
+    });
+  });
+});
+
+describe("unarchiveCourse (BUG-001)", () => {
+  it("blocks a non-admin", async () => {
+    await expect(unarchiveCourse("c1", instructor)).rejects.toBeInstanceOf(
+      ForbiddenError,
+    );
+    expect(courseUpdate).not.toHaveBeenCalled();
+  });
+
+  it("restores the status the course held before archiving, not always DRAFT", async () => {
+    courseFindUniqueOrThrow.mockResolvedValue({
+      preArchiveStatus: CourseStatus.PUBLISHED,
+    });
+
+    await unarchiveCourse("c1", admin);
+
+    expect(courseUpdate.mock.calls[0][0].data).toEqual({
+      status: CourseStatus.PUBLISHED,
+      preArchiveStatus: null,
+    });
+  });
+
+  it("falls back to DRAFT when there is no recorded prior status", async () => {
+    courseFindUniqueOrThrow.mockResolvedValue({ preArchiveStatus: null });
+
+    await unarchiveCourse("c1", admin);
+
+    expect(courseUpdate.mock.calls[0][0].data).toEqual({
+      status: CourseStatus.DRAFT,
+      preArchiveStatus: null,
+    });
   });
 });
 

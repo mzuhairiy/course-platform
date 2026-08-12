@@ -117,6 +117,9 @@ model Course {
   language     String       @default("id")
   price        Int          @default(0) // dalam Rupiah, 0 = free
   status       CourseStatus @default(DRAFT)
+  // Status held right before an admin archive, so unarchive can restore it
+  // instead of always landing on DRAFT. Null when the course was never archived.
+  preArchiveStatus CourseStatus?
   publishedAt  DateTime?
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt

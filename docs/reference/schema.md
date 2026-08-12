@@ -5,6 +5,7 @@
 > **Catatan perubahan setelah plan awal:**
 > - `User.bio` ditambahkan (profile settings + content seed instruktur).
 > - `Course.coverLabel` ditambahkan (cover 3D-text generatif pengganti thumbnail).
+> - `Course.preArchiveStatus` ditambahkan (fix BUG-001: unarchive restore ke status sebelumnya, bukan selalu DRAFT).
 
 ## Database Schema (Prisma)
 
@@ -122,6 +123,7 @@ model Course {
   language      String       @default("id")
   price         Int          @default(0)        // dalam Rupiah, 0 = free
   status        CourseStatus @default(DRAFT)
+  preArchiveStatus CourseStatus? // status sebelum diarsipkan, dipakai unarchive utk restore (bukan selalu ke DRAFT)
   publishedAt   DateTime?
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
